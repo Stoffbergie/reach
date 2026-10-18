@@ -1,120 +1,160 @@
+<div align="center">
+
+<img src="public/apple-touch-icon.png" width="72" height="72" alt="Shell Over Edge">
+
 # Shell Over Edge
 
-Reach any shell from anywhere.
+**Reach any shell from anywhere.**
 
-Temporary shell access over HTTPS for when SSH, a VPN or open ports aren't an option. Start the agent on the machine you want to reach, then send commands to its code with curl. Everything below is also on [soe.stoff.dev](https://soe.stoff.dev).
+Temporary shell access over HTTPS. No SSH, no VPN, no open ports.
+
+[![Deploy](https://github.com/Stoffbergie/shell-over-edge/actions/workflows/deploy.yml/badge.svg)](https://github.com/Stoffbergie/shell-over-edge/actions/workflows/deploy.yml)
+[![Cloudflare Workers](https://img.shields.io/badge/runs%20on-Cloudflare%20Workers-111?logo=cloudflare&logoColor=white)](https://workers.cloudflare.com)
+[![Agents](https://img.shields.io/badge/agents-sh%20%C2%B7%20PowerShell-111)](#start-the-agent)
+[![License: MIT](https://img.shields.io/badge/license-MIT-111)](./LICENSE)
+
+[Website](https://soe.stoff.dev) · [How it works](#how-it-works) · [Issues](https://github.com/Stoffbergie/shell-over-edge/issues)
+
+</div>
+
+---
+
+Paste one line on the machine you want to reach. It prints a code. Send commands to that code with curl from anywhere and get the output back. When you're done, press Ctrl+C and the session is gone.
+
+```console
+# On the machine you want to reach
+$ curl -sS https://soe.stoff.dev | sh
+Session: 1234abcd (copied to clipboard)
+Stop anytime: Ctrl+C
+
+# From anywhere
+$ curl https://soe.stoff.dev/1234abcd -d 'uname -sr'
+Linux 6.8.0-45-generic
+```
+
+## Features
+
+- **Nothing to install.** The agent is plain POSIX sh or PowerShell, piped straight from curl.
+- **Outbound only.** The target only makes HTTPS requests, so it works behind NAT and firewalls that block inbound traffic.
+- **Text for people, JSON for machines.** Plain output by default. Ask for JSON to get the exit code, stdout and stderr separately.
+- **Safe to run in parallel.** Commands queue in order and every result goes back to the request that sent it.
+- **Gone when you're done.** Ctrl+C or `DELETE` ends the session. Sessions expire after 2 hours and delete themselves.
+- **Nothing kept.** Commands and output pass through memory only. The session stores its shell, platform and timestamps, and nothing else.
 
 ## Start the agent
 
-macOS and Linux:
-
 ```sh
-curl -sS https://soe.stoff.dev | sh
+curl -sS https://soe.stoff.dev | sh     # macOS and Linux
+irm https://soe.stoff.dev | iex         # Windows PowerShell
 ```
 
-Windows PowerShell:
-
-```powershell
-irm https://soe.stoff.dev | iex
-```
-
-It prints a code and copies it to your clipboard:
-
-```text
-Session: 1234abcd (copied to clipboard)
-Stop anytime: Ctrl+C
-```
+The agent prints an 8-character code and copies it to your clipboard.
 
 ## Send commands
 
-```sh
-curl https://soe.stoff.dev/1234abcd -d pwd
-```
+| Do this                      | With                                                            |
+| ---------------------------- | --------------------------------------------------------------- |
+| Run a command                | `curl https://soe.stoff.dev/<code> -d pwd`                      |
+| Pick a directory and timeout | `curl 'https://soe.stoff.dev/<code>?cwd=/tmp&timeout=10' -d ls` |
+| Run a script file            | `curl https://soe.stoff.dev/<code> --data-binary @deploy.sh`    |
+| Check the session            | `curl https://soe.stoff.dev/<code>`                             |
+| End the session              | `curl -X DELETE https://soe.stoff.dev/<code>`                   |
 
-Output comes back as plain text, stdout then stderr, with the exit code in the `X-Exit-Code` header. Exit code 124 means the command timed out.
+Output comes back as plain text, stdout then stderr, with the exit code in the `X-Exit-Code` header. Exit code 124 means the command hit its timeout (default 30 seconds, up to 50).
 
-Pick a working directory or timeout (default 30 seconds, up to 50):
+The session check returns JSON with `code`, `shell` (`sh` or `powershell`), `platform`, `connected` and `expiresAt`.
 
-```sh
-curl 'https://soe.stoff.dev/1234abcd?cwd=/tmp&timeout=10' -d 'ls -la'
-```
+<details>
+<summary><strong>For scripts and AI agents</strong></summary>
 
-Run a script file:
-
-```sh
-curl https://soe.stoff.dev/1234abcd --data-binary @deploy.sh
-```
-
-Check the session, or end it:
-
-```sh
-curl https://soe.stoff.dev/1234abcd
-curl -X DELETE https://soe.stoff.dev/1234abcd
-```
-
-The status is JSON: `code`, `shell` (`sh` or `powershell`), `platform`, `connected` and `expiresAt`.
-
-## For scripts and agents
+<br>
 
 Ask for JSON to get the exit code, stdout and stderr separately:
 
 ```sh
-curl https://soe.stoff.dev/1234abcd -H 'Accept: application/json' -d 'npm test'
+curl https://soe.stoff.dev/<code> -H 'Accept: application/json' -d 'npm test'
 ```
 
 ```json
 { "exitCode": 0, "stdout": "...", "stderr": "" }
 ```
 
-Send JSON instead of a raw command with `Content-Type: application/json` and `{"command": "npm test", "cwd": "/app", "timeout": 50}`.
+Send JSON instead of a raw body and query string:
 
-Errors are plain text with a status code: 404 unknown session, 410 ended, 413 too large, 429 too many requests, 504 no result in time.
+```sh
+curl https://soe.stoff.dev/<code> \
+  -H 'Content-Type: application/json' \
+  -d '{"command": "npm test", "cwd": "/app", "timeout": 50}'
+```
+
+Errors are plain text with a status code:
+
+| Status | Meaning                                     |
+| ------ | ------------------------------------------- |
+| 400    | Empty command or invalid JSON               |
+| 404    | Unknown session                             |
+| 410    | Session ended                               |
+| 413    | Command over 64 KB                          |
+| 429    | More than 300 lookups a minute from your IP |
+| 504    | No result in time                           |
+
+Check `shell` in the session status before choosing command syntax. The homepage and the top of each agent script carry the full usage, so `curl https://soe.stoff.dev` explains itself.
+
+</details>
+
+## Security
+
+The 8-character code is the only key to the session. Treat it like a password, share it only with whoever needs the shell, and end the session when you're done. Each IP address gets 300 session lookups a minute, so codes can't be guessed. Commands run as the user who started the agent, with that user's permissions.
 
 ## Limits
 
-| Item            | Limit                 |
-| --------------- | --------------------- |
-| Session         | 2 hours               |
-| Command         | 64 KB                 |
-| Output          | 1 MB                  |
-| Timeout         | 1-50 seconds          |
-| Session lookups | 300 per minute per IP |
-
-The 8-character code is the only key, so treat it like a password and end the session when you're done.
+| Item    | Limit        |
+| ------- | ------------ |
+| Session | 2 hours      |
+| Command | 64 KB        |
+| Output  | 1 MB         |
+| Timeout | 1-50 seconds |
 
 ## How it works
 
 ```mermaid
 sequenceDiagram
     participant Target as "Target shell"
-    participant Worker as "Cloudflare Worker"
-    participant Session as "Durable Object"
+    participant Session as "Worker + Durable Object"
     participant Sender as "Sender"
 
-    Target->>Worker: "GET / | sh"
-    Target->>Session: "POST / (create, get code)"
-    Target->>Session: "GET /code/next"
+    Target->>Session: "GET / | sh"
+    Target->>Session: "POST / (create session, get code)"
+    Target->>Session: "GET /code/next (long poll)"
     Sender->>Session: "POST /code"
     Session-->>Target: "command"
-    Target->>Target: "run command"
-    Target->>Session: "POST /code/result/:id"
+    Target->>Target: "run it"
+    Target->>Session: "POST /code/result/id"
     Session-->>Sender: "output"
 ```
 
-One Cloudflare Worker and one Durable Object per session. The Durable Object holds the session, queues commands in order, matches each result to its sender, and deletes itself when the session expires. The agents are plain POSIX sh and PowerShell, with nothing to install.
+One Cloudflare Worker serves the agent, the website and the API. Each session is a Durable Object named after its code: it holds the session, queues commands in order, matches every result to its sender, and deletes itself with an alarm when the session expires. The agent long-polls for work, so it never needs an open port.
 
 ## Development
 
-Requires [Vite+](https://viteplus.dev). Docker is only needed for `vp run test:containers`.
+Requires [Vite+](https://viteplus.dev). Docker is only needed for the container tests.
 
 ```sh
 vp install
 vp dev
-curl -sS http://127.0.0.1:8787/ | sh
+curl -sS http://127.0.0.1:8787 | sh
 ```
 
-`vp check` formats, lints and type-checks, and runs on every commit. `vp test` runs the end-to-end tests against the real Worker with real POSIX and PowerShell agents. Both run before every deploy.
+| Command                  | What it does                                                                |
+| ------------------------ | --------------------------------------------------------------------------- |
+| `vp dev`                 | Run the Worker locally                                                      |
+| `vp check`               | Format, lint and type-check (also runs on every commit)                     |
+| `vp test`                | End-to-end tests against the real Worker with real sh and PowerShell agents |
+| `vp run test:containers` | Run the agent in Alpine, Debian and Ubuntu containers                       |
+| `vp build`               | Build the Worker for deployment                                             |
 
-```sh
-vp run test:containers
-```
+Pushing to `main` runs the checks, deploys to Cloudflare and smoke-tests production with a real agent.
+
+## License
+
+[MIT](./LICENSE) © Dirk Beukes
