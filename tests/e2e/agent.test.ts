@@ -113,6 +113,13 @@ test.skipIf(!powerShell)(
       assert.equal(output.stdout.trim(), "out", agent.output());
       assert.match(output.stderr, /err/);
 
+      const exited = await fetch(`${baseUrl}/${agent.code}`, { method: "POST", headers: { Accept: "application/json" }, body: "Write-Output before; exit 3" });
+      assert.equal(exited.status, 200);
+      const exitOutput = (await exited.json()) as JsonOutput;
+      assert.equal(exitOutput.exitCode, 3);
+      assert.equal(exitOutput.stdout.trim(), "before");
+      assert.equal(exitOutput.stderr, "");
+
       const startedAt = performance.now();
       const slow = await send(agent.code, "Start-Sleep -Seconds 10; Write-Output too-late", { timeout: 2 });
       assert.ok(performance.now() - startedAt < 8000, agent.output());

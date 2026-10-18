@@ -107,7 +107,15 @@ function Start-CommandJob([string]$CommandBody, [string]$Cwd) {
         Set-Location -LiteralPath $Cwd
       }
       $global:LASTEXITCODE = $null
-      $Output = @(& ([scriptblock]::Create($CommandBody)) *>&1)
+      $PowerShellPath = (Get-Process -Id $PID).Path
+      $OutputEncoding = [Text.UTF8Encoding]::new($false)
+      $Runner = @'
+[Console]::InputEncoding = [Text.UTF8Encoding]::new($false)
+$global:LASTEXITCODE = $null
+& ([scriptblock]::Create([Console]::In.ReadToEnd())) 3>&1 4>&1 5>&1 6>&1
+if ($null -ne $global:LASTEXITCODE) { exit $global:LASTEXITCODE }
+'@
+      $Output = @($CommandBody | & $PowerShellPath -NoProfile -NonInteractive -OutputFormat XML -Command $Runner *>&1)
       $Stdout = $Output | Where-Object { $_ -isnot [System.Management.Automation.ErrorRecord] } | Out-String
       $Stderr = $Output | Where-Object { $_ -is [System.Management.Automation.ErrorRecord] } | Out-String
       $ExitCode = if ($null -ne $global:LASTEXITCODE) { [int]$global:LASTEXITCODE } else { 0 }
