@@ -39,7 +39,6 @@ export class CommandBridgeCore {
     if (url.pathname === "/send") return this.sendCommand(request);
     if (url.pathname === "/next") return this.nextCommand(request);
     if (url.pathname.startsWith("/result/")) return this.receiveResult(request, cleanString(url.pathname.slice("/result/".length), 200));
-    if (url.pathname === "/end") return this.endSession();
     return textResponse("Not found\n", 404);
   }
 
@@ -125,7 +124,7 @@ export class CommandBridgeCore {
     return textResponse("ok\n");
   }
 
-  private endSession(): Response {
+  endSession(): void {
     for (const waiter of this.nextWaiters) {
       if (waiter.queueTimer) clearTimeout(waiter.queueTimer);
       if (waiter.resultTimer) clearTimeout(waiter.resultTimer);
@@ -140,7 +139,6 @@ export class CommandBridgeCore {
     this.resultWaiters.clear();
     this.recentCommands.clear();
     this.queued = [];
-    return textResponse("ended\n");
   }
 
   private dispatch(command: BridgeCommand): void {

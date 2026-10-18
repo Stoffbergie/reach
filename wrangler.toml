@@ -26,14 +26,6 @@ persist = false
 [placement]
 mode = "smart"
 
-[[r2_buckets]]
-binding = "SOE_MAILBOX"
-bucket_name = "soe-mailbox"
-preview_bucket_name = "soe-mailbox-preview"
-
-[triggers]
-crons = ["*/30 * * * *"]
-
 [[durable_objects.bindings]]
 name = "COMMAND_BRIDGES"
 class_name = "CommandBridge"
