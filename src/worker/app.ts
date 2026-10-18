@@ -178,5 +178,5 @@ function wantsHtml(headers: Headers): boolean {
 
 function wantsPowerShell(headers: Headers): boolean {
   const signal = `${headers.get("accept") ?? ""} ${headers.get("user-agent") ?? ""}`;
-  return /\b(?:powershell|pwsh)\b/i.test(signal);
+  return /\b(?:windowspowershell|powershell|pwsh)\b/i.test(signal);
 }
