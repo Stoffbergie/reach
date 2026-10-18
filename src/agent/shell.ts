@@ -37,7 +37,7 @@ header_value() {
 }
 
 end_session() {
-  if [ "\${SOE_NO_END_ON_EXIT:-}" = "1" ]; then
+  if [ "\${REACH_NO_END_ON_EXIT:-}" = "1" ]; then
     return 0
   fi
   curl -fsS --connect-timeout 5 --max-time 10 -X DELETE "$BASE_URL/$CODE" >/dev/null 2>&1 || true

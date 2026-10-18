@@ -1,9 +1,9 @@
 import { strict as assert } from "node:assert";
 import { test } from "vite-plus/test";
-import { assertOk, baseUrl, end, findCommand, send, startAgent } from "../helpers/soe";
+import { assertOk, baseUrl, end, findCommand, send, startAgent } from "../helpers/reach";
 
 const docker = findCommand("docker");
-const runContainers = Boolean(docker && process.platform !== "win32" && process.env.SOE_DOCKER_E2E === "1");
+const runContainers = Boolean(docker && process.platform !== "win32" && process.env.REACH_DOCKER_E2E === "1");
 
 const targets = [
   { name: "Alpine BusyBox sh", image: "alpine:3.20", setup: "apk add --no-cache curl ca-certificates >/dev/null" },

@@ -37,13 +37,13 @@ jobs:
 
       - name: Smoke test
         run: |
-          curl -fsS --retry 5 --retry-all-errors https://soe.stoff.dev > agent.sh
+          curl -fsS --retry 20 --retry-delay 3 --retry-all-errors https://reach.stoff.dev > agent.sh
           timeout 60 sh agent.sh > agent.log 2>&1 &
           for attempt in $(seq 1 20); do
             code=$(sed -n 's/^Session: \([a-z0-9]*\).*/\1/p' agent.log)
             [ -n "$code" ] && break
             sleep 1
           done
-          test "$(curl -fsS "https://soe.stoff.dev/$code" -d 'printf soe-smoke')" = "soe-smoke"
-          curl -fsS -X DELETE "https://soe.stoff.dev/$code"
+          test "$(curl -fsS "https://reach.stoff.dev/$code" -d 'printf reach-smoke')" = "reach-smoke"
+          curl -fsS -X DELETE "https://reach.stoff.dev/$code"
           wait

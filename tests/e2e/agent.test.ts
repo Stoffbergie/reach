@@ -4,7 +4,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { performance } from "node:perf_hooks";
 import { test } from "vite-plus/test";
-import { assertOk, baseUrl, end, findCommand, send, sessionCodePattern, startPowerShellAgent, startShellAgent, type JsonOutput, type SessionStatus } from "../helpers/soe";
+import { assertOk, baseUrl, end, findCommand, send, sessionCodePattern, startPowerShellAgent, startShellAgent, type JsonOutput, type SessionStatus } from "../helpers/reach";
 
 const posix = Boolean(findCommand("sh") && findCommand("curl"));
 const powerShell = findCommand(process.platform === "win32" ? ["pwsh", "powershell.exe"] : ["pwsh"]);
@@ -44,7 +44,7 @@ test.skipIf(!posix)("POSIX agent runs raw shell syntax and reports failed comman
 });
 
 test.skipIf(!posix)("POSIX agent runs commands in the requested working directory", async () => {
-  const dir = await realpath(await mkdtemp(join(tmpdir(), "soe-cwd-")));
+  const dir = await realpath(await mkdtemp(join(tmpdir(), "reach-cwd-")));
   const agent = await startShellAgent();
   try {
     const result = await send(agent.code, "pwd", { cwd: dir });
@@ -72,7 +72,7 @@ test.skipIf(!posix)("POSIX agent keeps parallel command output apart", async () 
 });
 
 test.skipIf(!posix || process.platform === "win32")("POSIX agent stops slow commands without a timeout binary", async () => {
-  const dir = await mkdtemp(join(tmpdir(), "soe-no-timeout-"));
+  const dir = await mkdtemp(join(tmpdir(), "reach-no-timeout-"));
   const bin = join(dir, "bin");
   await mkdir(bin);
   for (const command of ["awk", "base64", "cat", "curl", "kill", "mktemp", "rm", "sh", "sleep", "uname"]) {

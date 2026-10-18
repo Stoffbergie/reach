@@ -1,6 +1,6 @@
 import { test } from "vite-plus/test";
 import { strict as assert } from "node:assert";
-import { baseUrl, send, sleep } from "../helpers/soe";
+import { baseUrl, send, sleep } from "../helpers/reach";
 
 test("relay bridge handles a burst of parallel commands without timeouts or result mixups", async () => {
   const session = await createSession();

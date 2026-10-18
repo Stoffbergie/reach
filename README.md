@@ -1,19 +1,19 @@
 <div align="center">
 
-<img src="public/apple-touch-icon.png" width="72" height="72" alt="Shell Over Edge">
+<img src="public/apple-touch-icon.png" width="72" height="72" alt="reach">
 
-# Shell Over Edge
+# reach
 
 **Reach any shell from anywhere.**
 
 Temporary shell access over HTTPS. No SSH, no VPN, no open ports.
 
-[![Deploy](https://github.com/Stoffbergie/shell-over-edge/actions/workflows/deploy.yml/badge.svg)](https://github.com/Stoffbergie/shell-over-edge/actions/workflows/deploy.yml)
+[![Deploy](https://github.com/Stoffbergie/reach/actions/workflows/deploy.yml/badge.svg)](https://github.com/Stoffbergie/reach/actions/workflows/deploy.yml)
 [![Cloudflare Workers](https://img.shields.io/badge/runs%20on-Cloudflare%20Workers-111?logo=cloudflare&logoColor=white)](https://workers.cloudflare.com)
 [![Agents](https://img.shields.io/badge/agents-sh%20%C2%B7%20PowerShell-111)](#start-the-agent)
 [![License: MIT](https://img.shields.io/badge/license-MIT-111)](./LICENSE)
 
-[Website](https://soe.stoff.dev) · [How it works](#how-it-works) · [Issues](https://github.com/Stoffbergie/shell-over-edge/issues)
+[Website](https://reach.stoff.dev) · [How it works](#how-it-works) · [Issues](https://github.com/Stoffbergie/reach/issues)
 
 </div>
 
@@ -23,12 +23,12 @@ Paste one line on the machine you want to reach. It prints a code. Send commands
 
 ```console
 # On the machine you want to reach
-$ curl -sS https://soe.stoff.dev | sh
+$ curl -sS https://reach.stoff.dev | sh
 Session: 1234abcd (copied to clipboard)
 Stop anytime: Ctrl+C
 
 # From anywhere
-$ curl https://soe.stoff.dev/1234abcd -d 'uname -sr'
+$ curl https://reach.stoff.dev/1234abcd -d 'uname -sr'
 Linux 6.8.0-45-generic
 ```
 
@@ -44,21 +44,21 @@ Linux 6.8.0-45-generic
 ## Start the agent
 
 ```sh
-curl -sS https://soe.stoff.dev | sh     # macOS and Linux
-irm https://soe.stoff.dev | iex         # Windows PowerShell
+curl -sS https://reach.stoff.dev | sh     # macOS and Linux
+irm https://reach.stoff.dev | iex         # Windows PowerShell
 ```
 
 The agent prints an 8-character code and copies it to your clipboard.
 
 ## Send commands
 
-| Do this                      | With                                                            |
-| ---------------------------- | --------------------------------------------------------------- |
-| Run a command                | `curl https://soe.stoff.dev/<code> -d pwd`                      |
-| Pick a directory and timeout | `curl 'https://soe.stoff.dev/<code>?cwd=/tmp&timeout=10' -d ls` |
-| Run a script file            | `curl https://soe.stoff.dev/<code> --data-binary @deploy.sh`    |
-| Check the session            | `curl https://soe.stoff.dev/<code>`                             |
-| End the session              | `curl -X DELETE https://soe.stoff.dev/<code>`                   |
+| Do this                      | With                                                              |
+| ---------------------------- | ----------------------------------------------------------------- |
+| Run a command                | `curl https://reach.stoff.dev/<code> -d pwd`                      |
+| Pick a directory and timeout | `curl 'https://reach.stoff.dev/<code>?cwd=/tmp&timeout=10' -d ls` |
+| Run a script file            | `curl https://reach.stoff.dev/<code> --data-binary @deploy.sh`    |
+| Check the session            | `curl https://reach.stoff.dev/<code>`                             |
+| End the session              | `curl -X DELETE https://reach.stoff.dev/<code>`                   |
 
 Output comes back as plain text, stdout then stderr, with the exit code in the `X-Exit-Code` header. Exit code 124 means the command hit its timeout (default 30 seconds, up to 50).
 
@@ -72,7 +72,7 @@ The session check returns JSON with `code`, `shell` (`sh` or `powershell`), `pla
 Ask for JSON to get the exit code, stdout and stderr separately:
 
 ```sh
-curl https://soe.stoff.dev/<code> -H 'Accept: application/json' -d 'npm test'
+curl https://reach.stoff.dev/<code> -H 'Accept: application/json' -d 'npm test'
 ```
 
 ```json
@@ -82,7 +82,7 @@ curl https://soe.stoff.dev/<code> -H 'Accept: application/json' -d 'npm test'
 Send JSON instead of a raw body and query string:
 
 ```sh
-curl https://soe.stoff.dev/<code> \
+curl https://reach.stoff.dev/<code> \
   -H 'Content-Type: application/json' \
   -d '{"command": "npm test", "cwd": "/app", "timeout": 50}'
 ```
@@ -98,7 +98,7 @@ Errors are plain text with a status code:
 | 429    | More than 300 lookups a minute from your IP |
 | 504    | No result in time                           |
 
-Check `shell` in the session status before choosing command syntax. The homepage and the top of each agent script carry the full usage, so `curl https://soe.stoff.dev` explains itself.
+Check `shell` in the session status before choosing command syntax. The homepage and the top of each agent script carry the full usage, so `curl https://reach.stoff.dev` explains itself.
 
 </details>
 

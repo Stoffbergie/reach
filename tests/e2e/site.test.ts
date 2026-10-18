@@ -1,6 +1,6 @@
 import { strict as assert } from "node:assert";
 import { test } from "vite-plus/test";
-import { baseUrl } from "../helpers/soe";
+import { baseUrl } from "../helpers/reach";
 
 test("browsers and link previews get the homepage instead of the agent", async () => {
   const visitors: Record<string, string>[] = [{ Accept: "text/html" }, { "User-Agent": "Slackbot-LinkExpanding 1.0" }];
@@ -16,7 +16,7 @@ test("browsers and link previews get the homepage instead of the agent", async (
 
 test("the agent script explains how to use it", async () => {
   const script = await (await fetch(baseUrl)).text();
-  assert.match(script, /^#!\/bin\/sh\n# Shell Over Edge/);
+  assert.match(script, /^#!\/bin\/sh\n# reach: /);
   assert.match(script, new RegExp(`#\\s+curl ${baseUrl}/<code> -d pwd`));
 });
 
@@ -25,7 +25,7 @@ test("browsers get a not found page and the site serves its images", async () =>
   assert.equal(missing.status, 404);
   assert.match(await missing.text(), /No shell answers at this address\./);
 
-  const image = await fetch(`${baseUrl}/social/soe.png`);
+  const image = await fetch(`${baseUrl}/social/reach.png`);
   assert.equal(image.status, 200);
   assert.equal(image.headers.get("Content-Type"), "image/png");
 });
