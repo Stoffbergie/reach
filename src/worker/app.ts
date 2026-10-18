@@ -158,12 +158,13 @@ async function readCommand(request: Request): Promise<{ command: string; cwd: st
     };
   }
 
-  let payload: { command?: unknown; cwd?: unknown; timeout?: unknown };
+  let payload: { command?: unknown; cwd?: unknown; timeout?: unknown } | null;
   try {
     payload = JSON.parse(text);
   } catch {
     throw new BadRequestError("Invalid JSON");
   }
+  if (payload === null) throw new BadRequestError("Command is required");
   return {
     command: cleanString(payload.command, maxCommandBytes).trim(),
     cwd: cleanString(payload.cwd ?? url.searchParams.get("cwd"), 500),
