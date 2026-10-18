@@ -1,4 +1,4 @@
-const SOURCE_URL = "https://github.com/Stoffbergie/shell-over-edge";
+const SOURCE_URL = "https://github.com/Stoffbergie/reach";
 const TAGLINE = "Reach any shell from anywhere.";
 
 const STYLE = `
@@ -72,7 +72,7 @@ const LIMITS =
   "Sessions last 2 hours. Commands up to 64 KB, output up to 1 MB. Errors are plain text: 404 unknown session, 410 ended, 413 too large, 429 more than 300 lookups a minute, 504 no result in time. The code is the only key, so end the session when you're done.";
 
 export function scriptUsage(origin: string, comment: string): string {
-  const lines = [`Shell Over Edge: ${TAGLINE.toLowerCase()}`, ""];
+  const lines = ["reach: temporary shell access over HTTPS.", ""];
   for (const section of usage(origin)) {
     lines.push(section.title.toUpperCase());
     for (const [command, , description] of section.rows) lines.push(`  ${command}`, `      ${description}`);
@@ -88,16 +88,16 @@ export function homePage(origin: string): string {
     return `<h2>${section.title}</h2><dl class="commands">${rows}</dl>`;
   });
   return layout(
-    `soe · ${TAGLINE}`,
+    `reach · ${TAGLINE}`,
     `<h1>${TAGLINE}</h1>
 ${sections.slice(0, 2).join("")}
 <details><summary>More options</summary>${sections.slice(2).join("")}<p>${escapeHtml(LIMITS)}</p></details>
 <footer><p><a href="${SOURCE_URL}">Source</a></p></footer>
-<script type="application/ld+json">${JSON.stringify({ "@context": "https://schema.org", "@type": "WebSite", name: "Shell Over Edge", url: `${origin}/`, description: TAGLINE })}</script>`,
+<script type="application/ld+json">${JSON.stringify({ "@context": "https://schema.org", "@type": "WebSite", name: "reach", url: `${origin}/`, description: TAGLINE })}</script>`,
     {
       description: `${TAGLINE} Temporary shell access over HTTPS. No SSH, no VPN, no open ports.`,
       url: `${origin}/`,
-      image: `${origin}/social/soe.png`,
+      image: `${origin}/social/reach.png`,
       index: true
     }
   );
@@ -105,7 +105,7 @@ ${sections.slice(0, 2).join("")}
 
 export function notFoundPage(): string {
   return layout(
-    "Not found · soe",
+    "Not found · reach",
     `<h1>Not found</h1>
 <p>No shell answers at this address.</p>`,
     { description: "No shell answers at this address." }
@@ -117,7 +117,7 @@ function layout(title: string, body: string, metadata: { description: string; ur
     metadata.url && metadata.image
       ? `<link rel="canonical" href="${escapeHtml(metadata.url)}">
 <meta property="og:type" content="website">
-<meta property="og:site_name" content="soe">
+<meta property="og:site_name" content="reach">
 <meta property="og:title" content="${escapeHtml(title)}">
 <meta property="og:description" content="${escapeHtml(metadata.description)}">
 <meta property="og:url" content="${escapeHtml(metadata.url)}">
@@ -145,7 +145,7 @@ ${social}
 <style>${STYLE}</style>
 </head>
 <body>
-<header><a href="/">soe</a></header>
+<header><a href="/">reach</a></header>
 <main>
 ${body}
 </main>

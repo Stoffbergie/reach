@@ -91,7 +91,7 @@ function Invoke-AgentRequest {
 }
 
 function Stop-Session {
-  if ($env:SOE_NO_END_ON_EXIT -eq "1") { return }
+  if ($env:REACH_NO_END_ON_EXIT -eq "1") { return }
   try { Invoke-AgentRequest -Method Delete -Path "/$Code" | Out-Null } catch {}
 }
 

@@ -1,6 +1,6 @@
 import { strict as assert } from "node:assert";
 import { test } from "vite-plus/test";
-import { baseUrl, end, send, startShellAgent, type SessionStatus } from "../helpers/soe";
+import { baseUrl, end, send, startShellAgent, type SessionStatus } from "../helpers/reach";
 
 test("unknown sessions and empty commands return plain text errors", async () => {
   const unknown = await send("23456789", "pwd");
