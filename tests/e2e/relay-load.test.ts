@@ -1,5 +1,5 @@
 import { performance } from "node:perf_hooks";
-import { test } from "vitest";
+import { test } from "vite-plus/test";
 import { strict as assert } from "node:assert";
 import { app } from "../../src/worker/app";
 import { createTestEnv } from "../helpers/fake-env";

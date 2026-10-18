@@ -23,26 +23,30 @@ function requestText(url, init) {
   }
 
   return new Promise((resolve, reject) => {
-    const req = client.request(url, {
-      headers,
-      lookup: resilientLookup,
-      method: init.method,
-      timeout: 15000
-    }, (response) => {
-      const chunks = [];
-      response.on("data", (chunk) => chunks.push(chunk));
-      response.on("end", () => {
-        const status = response.statusCode || 0;
-        resolve({
-          response: {
-            ok: status >= 200 && status < 300,
-            status,
-            headers: response.headers
-          },
-          text: Buffer.concat(chunks).toString("utf8")
+    const req = client.request(
+      url,
+      {
+        headers,
+        lookup: resilientLookup,
+        method: init.method,
+        timeout: 15000
+      },
+      (response) => {
+        const chunks = [];
+        response.on("data", (chunk) => chunks.push(chunk));
+        response.on("end", () => {
+          const status = response.statusCode || 0;
+          resolve({
+            response: {
+              ok: status >= 200 && status < 300,
+              status,
+              headers: response.headers
+            },
+            text: Buffer.concat(chunks).toString("utf8")
+          });
         });
-      });
-    });
+      }
+    );
 
     req.on("error", reject);
     req.on("timeout", () => req.destroy(new Error(`Request timed out after 15000ms: ${url.href}`)));
@@ -101,7 +105,7 @@ assert(!root.text.includes("config_json"), "shell script still contains config c
 assert(!root.text.includes("Authorization"), "shell script should not use authorization headers");
 assert(!root.text.includes("X-Agent-User"), "shell script should not send target user telemetry");
 assert(!root.text.includes("$(whoami)"), "shell script should not read target user");
-assert(!root.text.includes("--data-binary \"$(pwd)\""), "shell script should not send target cwd telemetry");
+assert(!root.text.includes('--data-binary "$(pwd)"'), "shell script should not send target cwd telemetry");
 assert(!root.text.includes("?token" + "="), "shell script leaks token in URL");
 
 const legacy = await request("/connect.sh");
@@ -131,7 +135,7 @@ assert(isSessionCode(powerShellId), "PowerShell session code header missing");
 assert(!powerShell.response.headers["x-session-internal-id"], "PowerShell session response leaked internal id");
 assert(powerShell.text.includes(`$SessionId = "${powerShellId}"`), "PowerShell script does not embed its session id");
 assert(powerShell.text.includes("/api/sessions/$SessionId/next"), "PowerShell script does not poll the session route");
-assert(powerShell.text.includes("$AgentVersion = \"0.3.0\""), "PowerShell script has wrong agent version");
+assert(powerShell.text.includes('$AgentVersion = "0.3.0"'), "PowerShell script has wrong agent version");
 assert(!powerShell.text.includes("Get-ProbeJson"), "PowerShell script still contains probe control");
 assert(!powerShell.text.includes("Get-ConfigJson"), "PowerShell script still contains config control");
 assert(!powerShell.text.includes("soe-webrtc"), "PowerShell script still contains WebRTC");

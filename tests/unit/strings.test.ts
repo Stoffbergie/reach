@@ -1,4 +1,4 @@
-import { test } from "vitest";
+import { test } from "vite-plus/test";
 import { strict as assert } from "node:assert";
 import { quotePowerShell, quoteShell } from "../../src/shared/strings";
 
@@ -8,6 +8,6 @@ test("quotes shell values without losing embedded single quotes", () => {
 });
 
 test("quotes PowerShell values without expanding variables or escapes", () => {
-  assert.equal(quotePowerShell("simple"), "\"simple\"");
-  assert.equal(quotePowerShell("`$HOME \"quoted\""), "\"```$HOME `\"quoted`\"\"");
+  assert.equal(quotePowerShell("simple"), '"simple"');
+  assert.equal(quotePowerShell('`$HOME "quoted"'), '"```$HOME `"quoted`""');
 });

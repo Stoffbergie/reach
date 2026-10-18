@@ -44,7 +44,7 @@ export class CommandBridgeCore {
   }
 
   private async sendCommand(request: Request): Promise<Response> {
-    const payload = await request.json().catch(() => ({})) as CommandPayload;
+    const payload = (await request.json().catch(() => ({}))) as CommandPayload;
     const body = cleanString(payload.body, maxCommandBytes).trim();
     if (!body) return textResponse("Command body is required\n", 400);
 
@@ -111,15 +111,17 @@ export class CommandBridgeCore {
     if (waiter.resultTimer) clearTimeout(waiter.resultTimer);
     this.resultWaiters.delete(commandId);
     this.rememberCommand(commandId);
-    waiter.resolve(new Response(output, {
-      status: exitCode === 0 ? 200 : 500,
-      headers: {
-        "Cache-Control": "no-store",
-        "Content-Type": "text/plain; charset=utf-8",
-        "X-Command-Id": commandId,
-        "X-Exit-Code": String(exitCode)
-      }
-    }));
+    waiter.resolve(
+      new Response(output, {
+        status: exitCode === 0 ? 200 : 500,
+        headers: {
+          "Cache-Control": "no-store",
+          "Content-Type": "text/plain; charset=utf-8",
+          "X-Command-Id": commandId,
+          "X-Exit-Code": String(exitCode)
+        }
+      })
+    );
     logInfo("command_result", { commandId, exitCode, status: exitCode === 0 ? "completed" : "failed", bytes: output.length });
     return textResponse("ok\n");
   }

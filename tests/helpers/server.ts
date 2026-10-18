@@ -29,11 +29,16 @@ export async function startAppServer(app: Hono<{ Bindings: Env }>, fixture: Test
       const url = `${fixture.env.BASE_URL}${incoming.url || "/"}`;
       const headers = requestHeaders(incoming.headers);
       const body = incoming.method === "GET" || incoming.method === "HEAD" ? undefined : await requestBody(incoming);
-      const response = await app.request(url, {
-        method: incoming.method,
-        headers,
-        body
-      }, fixture.env, fixture.ctx);
+      const response = await app.request(
+        url,
+        {
+          method: incoming.method,
+          headers,
+          body
+        },
+        fixture.env,
+        fixture.ctx
+      );
       requests.push({ at: Date.now(), method: incoming.method || "GET", path: incoming.url || "/", status: response.status });
       outgoing.statusCode = response.status;
       outgoing.statusMessage = response.statusText;
@@ -63,7 +68,7 @@ export async function startAppServer(app: Hono<{ Bindings: Env }>, fixture: Test
     baseUrl,
     publicBaseUrl,
     requests,
-    close: () => new Promise<void>((resolve, reject) => server.close((error) => error ? reject(error) : resolve()))
+    close: () => new Promise<void>((resolve, reject) => server.close((error) => (error ? reject(error) : resolve())))
   };
 }
 

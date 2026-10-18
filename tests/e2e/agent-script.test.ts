@@ -3,7 +3,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { spawn } from "node:child_process";
 import { performance } from "node:perf_hooks";
-import { test } from "vitest";
+import { test } from "vite-plus/test";
 import { strict as assert } from "node:assert";
 import { app } from "../../src/worker/app";
 import { createTestEnv } from "../helpers/fake-env";
@@ -70,7 +70,10 @@ test.skipIf(!sh || !curl)("root POSIX agent starts and relays commands", async (
     const result = await sendCommand(server.baseUrl, id, "printf soe-bootstrap-e2e", diagnostics(output, server));
     assert.equal(result.status, 200);
     assert.equal(result.text, "soe-bootstrap-e2e");
-    assert.equal(server.requests.some((request) => request.path.includes("native") || request.path.includes("webrtc")), false);
+    assert.equal(
+      server.requests.some((request) => request.path.includes("native") || request.path.includes("webrtc")),
+      false
+    );
 
     await endSession(server.baseUrl, id);
     await waitForExit(agent, 10_000, output);
@@ -96,11 +99,12 @@ test.skipIf(!sh || !curl)("generated POSIX agent drains parallel relay sends wit
     output = captureOutput(agent);
 
     const count = 8;
-    const results = await Promise.all(Array.from({ length: count }, (_, index) => {
-      const expected = `soe-posix-parallel-${index}`;
-      return sendCommand(server.baseUrl, session.id, `printf ${expected}`, diagnostics(output, server))
-        .then((result) => ({ expected, result }));
-    }));
+    const results = await Promise.all(
+      Array.from({ length: count }, (_, index) => {
+        const expected = `soe-posix-parallel-${index}`;
+        return sendCommand(server.baseUrl, session.id, `printf ${expected}`, diagnostics(output, server)).then((result) => ({ expected, result }));
+      })
+    );
 
     for (const item of results) {
       assert.equal(item.result.status, 200);
@@ -292,14 +296,15 @@ function captureOutput(child: ReturnType<typeof spawn>): () => string {
 }
 
 function diagnostics(output: () => string, server: TestServer): () => string {
-  return () => [
-    "agent output:",
-    output(),
-    "session requests:",
-    JSON.stringify(server.requests.filter((request) => request.path.includes("/api/sessions/")).slice(-40)),
-    "recent requests:",
-    JSON.stringify(server.requests.slice(-50))
-  ].join("\n");
+  return () =>
+    [
+      "agent output:",
+      output(),
+      "session requests:",
+      JSON.stringify(server.requests.filter((request) => request.path.includes("/api/sessions/")).slice(-40)),
+      "recent requests:",
+      JSON.stringify(server.requests.slice(-50))
+    ].join("\n");
 }
 
 function assertCompactAgentOutput(output: string, sessionId: string): void {

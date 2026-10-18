@@ -53,21 +53,35 @@ export async function text(response: Response): Promise<string> {
   return response.text();
 }
 
-export async function createSession(app: Hono<{ Bindings: Env }>, fixture: TestFixture, path?: string): Promise<{
+export async function createSession(
+  app: Hono<{ Bindings: Env }>,
+  fixture: TestFixture,
+  path?: string
+): Promise<{
   id: string;
   code: string;
   internalId: string;
   script: string;
   contentType: string;
 }>;
-export async function createSession(app: Hono<{ Bindings: Env }>, fixture: TestFixture, path: string, init: RequestInit): Promise<{
+export async function createSession(
+  app: Hono<{ Bindings: Env }>,
+  fixture: TestFixture,
+  path: string,
+  init: RequestInit
+): Promise<{
   id: string;
   code: string;
   internalId: string;
   script: string;
   contentType: string;
 }>;
-export async function createSession(app: Hono<{ Bindings: Env }>, fixture: TestFixture, path = "/", init: RequestInit = {}): Promise<{
+export async function createSession(
+  app: Hono<{ Bindings: Env }>,
+  fixture: TestFixture,
+  path = "/",
+  init: RequestInit = {}
+): Promise<{
   id: string;
   code: string;
   internalId: string;
@@ -111,11 +125,8 @@ export class MemoryR2Bucket {
   objects = new Map<string, MemoryR2Object>();
 
   async put(key: string, value: ArrayBuffer | ArrayBufferView | string, options: { httpMetadata?: R2HTTPMetadata; customMetadata?: Record<string, string> } = {}): Promise<null> {
-    const bytes = value instanceof ArrayBuffer
-      ? new Uint8Array(value)
-      : ArrayBuffer.isView(value)
-        ? new Uint8Array(value.buffer, value.byteOffset, value.byteLength)
-        : new TextEncoder().encode(String(value));
+    const bytes =
+      value instanceof ArrayBuffer ? new Uint8Array(value) : ArrayBuffer.isView(value) ? new Uint8Array(value.buffer, value.byteOffset, value.byteLength) : new TextEncoder().encode(String(value));
     this.objects.set(key, new MemoryR2Object(key, bytes, options));
     return null;
   }
@@ -187,7 +198,7 @@ class FakeDurableObjectNamespace {
     const object = this.objects.get(id);
     if (!object) throw new Error(`Missing fake Durable Object ${id}`);
     return {
-      fetch: (request, init) => this.bridgeFetch ? this.bridgeFetch(id, request, init) : object.fetch(request, init)
+      fetch: (request, init) => (this.bridgeFetch ? this.bridgeFetch(id, request, init) : object.fetch(request, init))
     };
   }
 }
@@ -263,15 +274,17 @@ class FakeSessionBridge {
     if (waiter.resultTimer) clearTimeout(waiter.resultTimer);
     this.resultWaiters.delete(commandId);
     this.rememberCommand(commandId);
-    waiter.resolve(new Response(body, {
-      status: exitCode === 0 ? 200 : 500,
-      headers: {
-        "Cache-Control": "no-store",
-        "Content-Type": "text/plain; charset=utf-8",
-        "X-Command-Id": commandId,
-        "X-Exit-Code": String(exitCode)
-      }
-    }));
+    waiter.resolve(
+      new Response(body, {
+        status: exitCode === 0 ? 200 : 500,
+        headers: {
+          "Cache-Control": "no-store",
+          "Content-Type": "text/plain; charset=utf-8",
+          "X-Command-Id": commandId,
+          "X-Exit-Code": String(exitCode)
+        }
+      })
+    );
     return new Response("ok\n", { headers: { "Cache-Control": "no-store", "Content-Type": "text/plain; charset=utf-8" } });
   }
 
@@ -308,11 +321,14 @@ class FakeSessionBridge {
     const waiter = this.resultWaiters.get(command.id);
     if (!waiter || waiter.resultTimer) return;
     if (waiter.queueTimer) clearTimeout(waiter.queueTimer);
-    waiter.resultTimer = setTimeout(() => {
-      this.resultWaiters.delete(command.id);
-      this.rememberCommand(command.id);
-      waiter.resolve(new Response("Timed out waiting for command result\n", { status: 504 }));
-    }, Math.min(command.timeoutSeconds * 1000 + 1000, fakeMaxSendWaitMs));
+    waiter.resultTimer = setTimeout(
+      () => {
+        this.resultWaiters.delete(command.id);
+        this.rememberCommand(command.id);
+        waiter.resolve(new Response("Timed out waiting for command result\n", { status: 504 }));
+      },
+      Math.min(command.timeoutSeconds * 1000 + 1000, fakeMaxSendWaitMs)
+    );
   }
 
   private rememberCommand(commandId: string): void {

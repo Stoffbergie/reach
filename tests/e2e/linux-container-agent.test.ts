@@ -2,7 +2,7 @@ import { mkdtemp, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { spawn } from "node:child_process";
-import { test } from "vitest";
+import { test } from "vite-plus/test";
 import { strict as assert } from "node:assert";
 import { app } from "../../src/worker/app";
 import { createTestEnv } from "../helpers/fake-env";
@@ -34,32 +34,36 @@ const targets = [
 ];
 
 for (const target of targets) {
-  containerTest(`generated POSIX agent runs in ${target.name}`, async () => {
-    const fixture = createTestEnv();
-    const server = await startAppServer(app, fixture, { listenHost: "0.0.0.0", publicHost: "host.docker.internal" });
-    const dir = await mkdtemp(join(tmpdir(), "soe-linux-container-"));
-    let agent: ReturnType<typeof spawn> | undefined;
-    let output = () => "";
-    try {
-      const session = await createSession(server.baseUrl);
-      await writeFile(join(dir, "agent.sh"), session.script, { mode: 0o700 });
-      agent = spawn(docker, dockerArgs(target.image, dir, target.command));
-      output = captureOutput(agent);
+  containerTest(
+    `generated POSIX agent runs in ${target.name}`,
+    async () => {
+      const fixture = createTestEnv();
+      const server = await startAppServer(app, fixture, { listenHost: "0.0.0.0", publicHost: "host.docker.internal" });
+      const dir = await mkdtemp(join(tmpdir(), "soe-linux-container-"));
+      let agent: ReturnType<typeof spawn> | undefined;
+      let output = () => "";
+      try {
+        const session = await createSession(server.baseUrl);
+        await writeFile(join(dir, "agent.sh"), session.script, { mode: 0o700 });
+        agent = spawn(docker, dockerArgs(target.image, dir, target.command));
+        output = captureOutput(agent);
 
-      await waitForHello(server, agent, output, 120_000);
+        await waitForHello(server, agent, output, 120_000);
 
-      const result = await sendCommand(server.baseUrl, session.id, "printf container-e2e", diagnostics(output, server));
-      assert.equal(result.status, 200);
-      assert.equal(result.text, "container-e2e");
+        const result = await sendCommand(server.baseUrl, session.id, "printf container-e2e", diagnostics(output, server));
+        assert.equal(result.status, 200);
+        assert.equal(result.text, "container-e2e");
 
-      await endSession(server.baseUrl, session.id);
-      await waitForExit(agent, 20_000, output);
-    } finally {
-      if (agent && agent.exitCode === null) agent.kill();
-      await rm(dir, { force: true, recursive: true });
-      await server.close();
-    }
-  }, 180_000);
+        await endSession(server.baseUrl, session.id);
+        await waitForExit(agent, 20_000, output);
+      } finally {
+        if (agent && agent.exitCode === null) agent.kill();
+        await rm(dir, { force: true, recursive: true });
+        await server.close();
+      }
+    },
+    180_000
+  );
 }
 
 async function createSession(baseUrl: string): Promise<{ id: string; script: string }> {
@@ -87,17 +91,7 @@ async function endSession(baseUrl: string, id: string): Promise<void> {
 
 function dockerArgs(image: string, dir: string, command: string): string[] {
   const hostArgs = process.platform === "linux" ? ["--add-host", "host.docker.internal:host-gateway"] : [];
-  return [
-    "run",
-    "--rm",
-    ...hostArgs,
-    "-v",
-    `${dir}:/work:ro`,
-    image,
-    "sh",
-    "-lc",
-    command
-  ];
+  return ["run", "--rm", ...hostArgs, "-v", `${dir}:/work:ro`, image, "sh", "-lc", command];
 }
 
 async function waitForHello(server: TestServer, child: ReturnType<typeof spawn>, output: () => string, timeoutMs: number): Promise<void> {
@@ -135,14 +129,15 @@ function captureOutput(child: ReturnType<typeof spawn>): () => string {
 }
 
 function diagnostics(output: () => string, server: TestServer): () => string {
-  return () => [
-    "agent output:",
-    output(),
-    "session requests:",
-    JSON.stringify(server.requests.filter((request) => request.path.includes("/api/sessions/")).slice(-40)),
-    "recent requests:",
-    JSON.stringify(server.requests.slice(-50))
-  ].join("\n");
+  return () =>
+    [
+      "agent output:",
+      output(),
+      "session requests:",
+      JSON.stringify(server.requests.filter((request) => request.path.includes("/api/sessions/")).slice(-40)),
+      "recent requests:",
+      JSON.stringify(server.requests.slice(-50))
+    ].join("\n");
 }
 
 function sleep(ms: number): Promise<void> {

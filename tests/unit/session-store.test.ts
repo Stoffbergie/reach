@@ -1,4 +1,4 @@
-import { test } from "vitest";
+import { test } from "vite-plus/test";
 import { strict as assert } from "node:assert";
 import { cleanupExpiredSessions, codeKey, getJson, metaKey, putJson, putSessionCode, resolveSessionCode } from "../../src/worker/services/session-store";
 import type { SessionMeta } from "../../src/domain/session";

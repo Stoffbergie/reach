@@ -1,4 +1,4 @@
-import { test } from "vitest";
+import { test } from "vite-plus/test";
 import { strict as assert } from "node:assert";
 import { CommandBridgeCore } from "../../src/worker/durable-objects/command-bridge-core";
 
@@ -71,10 +71,12 @@ test("acknowledges late known results after command timeout", async () => {
 });
 
 function sendCommand(bridge: CommandBridgeCore, body: { body: string; cwd?: string; timeout?: number }): Promise<Response> {
-  return bridge.fetch(new Request("https://session/send", {
-    method: "POST",
-    body: JSON.stringify(body)
-  }));
+  return bridge.fetch(
+    new Request("https://session/send", {
+      method: "POST",
+      body: JSON.stringify(body)
+    })
+  );
 }
 
 async function nextCommand(bridge: CommandBridgeCore): Promise<{ id: string; body: string; cwd: string }> {
@@ -90,10 +92,12 @@ async function nextCommand(bridge: CommandBridgeCore): Promise<{ id: string; bod
 }
 
 function postResult(bridge: CommandBridgeCore, commandId: string, body: string, exitCode: number): Promise<Response> {
-  return bridge.fetch(new Request(`https://session/result/${commandId}?exit=${exitCode}`, {
-    method: "POST",
-    body
-  }));
+  return bridge.fetch(
+    new Request(`https://session/result/${commandId}?exit=${exitCode}`, {
+      method: "POST",
+      body
+    })
+  );
 }
 
 function sleep(ms: number): Promise<void> {

@@ -2,7 +2,6 @@
 
 Reach any shell from anywhere.
 
-[![CI](https://github.com/Stoffberg/shell-over-edge/actions/workflows/ci.yml/badge.svg)](https://github.com/Stoffberg/shell-over-edge/actions/workflows/ci.yml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 
 Shell Over Edge is a tiny Cloudflare Worker relay for temporary shell access when SSH, VPN, or inbound ports are not available. Start the generated agent on the target machine, copy the 8-character code, send commands over HTTPS, and get plain text output back.
@@ -59,12 +58,12 @@ Default timeout is 30 seconds. `timeout` is URL-only. JSON command bodies suppor
 
 ## API
 
-| Method | Path | Body | Response |
-| --- | --- | --- | --- |
-| `GET` | `/` | empty | POSIX agent by default, PowerShell for PowerShell clients |
-| `POST` | `/<code>/send` | raw text or `{"body":"pwd","cwd":"/tmp"}` | command output |
-| `POST` | `/<code>/send?timeout=10` | raw text or `{"body":"pwd","cwd":"/tmp"}` | command output |
-| `POST` | `/<code>/end` | empty | `ended` |
+| Method | Path                      | Body                                      | Response                                                  |
+| ------ | ------------------------- | ----------------------------------------- | --------------------------------------------------------- |
+| `GET`  | `/`                       | empty                                     | POSIX agent by default, PowerShell for PowerShell clients |
+| `POST` | `/<code>/send`            | raw text or `{"body":"pwd","cwd":"/tmp"}` | command output                                            |
+| `POST` | `/<code>/send?timeout=10` | raw text or `{"body":"pwd","cwd":"/tmp"}` | command output                                            |
+| `POST` | `/<code>/end`             | empty                                     | `ended`                                                   |
 
 ## Architecture
 
@@ -87,38 +86,24 @@ sequenceDiagram
 
 R2 stores session metadata and code lookups. A Durable Object owns each live command queue, pairs results with the right sender, and prevents parallel sends from mixing output.
 
-## Fresh Clone
+## Development
 
-Requirements:
-
-- Node.js 24 or newer
-- pnpm 11.5.2 via Corepack
-- Docker, only for `pnpm run test:containers`
-
-Setup:
+Requires [Vite+](https://viteplus.dev). Docker is only needed for `vp run test:containers`.
 
 ```sh
-corepack enable
-pnpm install --frozen-lockfile
-pnpm run validate
+vp install
+vp dev
+curl -sS http://127.0.0.1:8787/ | sh
 ```
 
-`pnpm run validate` runs typecheck, test typecheck, lint, Vitest, repo audit, and a Cloudflare Worker dry-run bundle.
-
-## Local Development
-
-```sh
-pnpm run dev
-curl -sS http://127.0.0.1:8787/
-```
+`vp check` formats, lints and type-checks, and runs on every commit. `vp test` runs the tests. Both run before every deploy.
 
 Extra checks:
 
 ```sh
-pnpm run test:load
-pnpm run test:containers
-pnpm run benchmark
-SOE_BASE_URL=https://soe.stoff.dev pnpm run smoke:prod
+vp run test:load
+vp run test:containers
+SOE_BASE_URL=https://soe.stoff.dev vp run smoke:prod
 ```
 
 ## Tech Decisions
@@ -131,12 +116,12 @@ SOE_BASE_URL=https://soe.stoff.dev pnpm run smoke:prod
 
 ## Limits
 
-| Item | Limit |
-| --- | --- |
-| Session code | 8 characters |
-| Session TTL | 2 hours |
-| Command body | 64 KB |
-| Result body | 1 MB |
+| Item            | Limit        |
+| --------------- | ------------ |
+| Session code    | 8 characters |
+| Session TTL     | 2 hours      |
+| Command body    | 64 KB        |
+| Result body     | 1 MB         |
 | Command timeout | 1-50 seconds |
 
 Automation instructions: [llms.txt](llms.txt)

@@ -8,15 +8,7 @@ import { BadRequestError, cleanString, normalizeTimeout, publicBaseUrl, readLimi
 import { logInfo } from "../../shared/log";
 import type { Env } from "../env";
 import { sessionBridge } from "../services/session-bridge";
-import {
-  codeKey,
-  expireIfNeeded,
-  getJson,
-  metaKey,
-  putJson,
-  putSessionCode,
-  resolveSessionCode
-} from "../services/session-store";
+import { codeKey, expireIfNeeded, getJson, metaKey, putJson, putSessionCode, resolveSessionCode } from "../services/session-store";
 
 type SessionApp = Hono<{ Bindings: Env }>;
 type SessionContext = Context<{ Bindings: Env }>;
@@ -136,7 +128,7 @@ async function requireSession(env: Env, id: string | undefined, options: { allow
 async function createSessionCode(env: Env): Promise<string> {
   for (let attempt = 0; attempt < 8; attempt += 1) {
     const code = randomSessionCode();
-    if (!await getJson<{ id: string }>(env, codeKey(code))) return code;
+    if (!(await getJson<{ id: string }>(env, codeKey(code)))) return code;
   }
   throw new Error("Could not allocate session code");
 }
