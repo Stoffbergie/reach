@@ -46,7 +46,7 @@ export async function createSessionResponse(c: SessionContext, kind: ScriptKind)
   await putSessionCode(c.env, code, id);
   logInfo("session_created", { sessionId: id, expiresAt: meta.expiresAt });
 
-  const baseUrl = publicBaseUrl(c.req.raw, c.env);
+  const baseUrl = publicBaseUrl(c.req.raw);
   const body = kind === "shell" ? shellAgentScript(baseUrl, meta) : powerShellAgentScript(baseUrl, meta);
   return new Response(body, {
     headers: {

@@ -6,6 +6,7 @@ export default defineConfig({
   server: { host: "0.0.0.0", port: 8787 },
   test: {
     include: ["tests/**/*.test.ts"],
+    globalSetup: ["tests/setup/worker.ts"],
     testTimeout: 15_000,
     hookTimeout: 15_000,
     restoreMocks: true
