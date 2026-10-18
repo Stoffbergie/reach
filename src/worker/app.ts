@@ -5,6 +5,7 @@ import { maxCommandBytes, maxResultBytes } from "../shared/config";
 import { base64Encode, randomSessionCode } from "../shared/crypto";
 import { BadRequestError, cleanString, normalizeTimeout, PayloadTooLargeError, readLimitedBytes, textResponse } from "../shared/http";
 import { logInfo } from "../shared/log";
+import { homePage, notFoundPage } from "../site/pages";
 import type { CommandBridge, Session } from "./durable-objects/command-bridge";
 import type { Env } from "./env";
 
@@ -30,8 +31,18 @@ app.use("*", async (c, next) => {
 
 app.get("/", (c) => {
   const baseUrl = new URL(c.req.url).origin;
+  if (wantsHtml(c.req.raw.headers)) return c.html(homePage(baseUrl));
   if (wantsPowerShell(c.req.raw.headers)) return textResponse(powerShellAgentScript(baseUrl));
   return textResponse(shellAgentScript(baseUrl), 200, { "Content-Type": "text/x-shellscript; charset=utf-8" });
+});
+
+app.get("/robots.txt", (c) => textResponse(`User-agent: *\nAllow: /\nSitemap: ${new URL(c.req.url).origin}/sitemap.xml\n`));
+
+app.get("/sitemap.xml", (c) => {
+  const origin = new URL(c.req.url).origin;
+  return c.body(`<?xml version="1.0" encoding="UTF-8"?><urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9"><url><loc>${origin}/</loc></url></urlset>`, 200, {
+    "Content-Type": "application/xml; charset=utf-8"
+  });
 });
 
 app.post("/", async (c) => {
@@ -118,7 +129,7 @@ app.post("/:code/result/:commandId", async (c) => {
   return textResponse("ok\n");
 });
 
-app.notFound(() => textResponse("Not found\n", 404));
+app.notFound((c) => (wantsHtml(c.req.raw.headers) ? c.html(notFoundPage(), 404) : textResponse("Not found\n", 404)));
 
 async function requireSession(c: AppContext, options: { allowEnded?: boolean } = {}): Promise<SessionGuard> {
   const address = c.req.header("cf-connecting-ip");
@@ -158,6 +169,11 @@ async function readCommand(request: Request): Promise<{ command: string; cwd: st
     cwd: cleanString(payload.cwd ?? url.searchParams.get("cwd"), 500),
     timeout: normalizeTimeout(payload.timeout ?? url.searchParams.get("timeout"))
   };
+}
+
+function wantsHtml(headers: Headers): boolean {
+  const crawler = /WhatsApp|facebookexternalhit|Facebot|meta-externalagent|meta-externalfetcher|Twitterbot|LinkedInBot|Slackbot|Discordbot|TelegramBot|Googlebot|bingbot/i;
+  return (headers.get("accept") ?? "").includes("text/html") || crawler.test(headers.get("user-agent") ?? "");
 }
 
 function wantsPowerShell(headers: Headers): boolean {

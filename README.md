@@ -2,7 +2,7 @@
 
 Reach any shell from anywhere.
 
-Temporary shell access over HTTPS for when SSH, a VPN or open ports aren't an option. Start the agent on the machine you want to reach, then send commands to its code with curl.
+Temporary shell access over HTTPS for when SSH, a VPN or open ports aren't an option. Start the agent on the machine you want to reach, then send commands to its code with curl. Everything below is also on [soe.stoff.dev](https://soe.stoff.dev).
 
 ## Start the agent
 

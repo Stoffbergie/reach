@@ -1,12 +1,10 @@
 import { defaultCommandTimeoutSeconds } from "../shared/config";
 import { quoteShell } from "../shared/strings";
+import { scriptUsage } from "../site/pages";
 
 export function shellAgentScript(baseUrl: string): string {
   return `#!/bin/sh
-# Shell Over Edge agent. Run it on the machine you want to reach:
-#   curl -sS ${baseUrl} | sh
-# It prints a session code. Send commands from anywhere:
-#   curl ${baseUrl}/<code> -d pwd
+${scriptUsage(baseUrl, "#")}
 set -u
 BASE_URL=${quoteShell(baseUrl)}
 

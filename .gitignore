@@ -2,9 +2,6 @@
 node_modules
 .wrangler
 .tmp
-public/app.js
 dist
 *.log
-.zig-cache
-zig-out
 .vitest/
