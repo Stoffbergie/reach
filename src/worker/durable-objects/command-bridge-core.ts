@@ -113,7 +113,6 @@ export class CommandBridgeCore {
     this.rememberCommand(commandId);
     waiter.resolve(
       new Response(output, {
-        status: exitCode === 0 ? 200 : 500,
         headers: {
           "Cache-Control": "no-store",
           "Content-Type": "text/plain; charset=utf-8",

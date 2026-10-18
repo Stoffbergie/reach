@@ -4,7 +4,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { performance } from "node:perf_hooks";
 import { test } from "vite-plus/test";
-import { assertOk, end, findCommand, send, sessionCodePattern, startPowerShellAgent, startShellAgent } from "../helpers/soe";
+import { assertOk, baseUrl, end, findCommand, send, sessionCodePattern, startPowerShellAgent, startShellAgent } from "../helpers/soe";
 
 const posix = Boolean(findCommand("sh") && findCommand("curl"));
 const powerShell = findCommand(process.platform === "win32" ? ["pwsh", "powershell.exe"] : ["pwsh"]);
@@ -22,6 +22,23 @@ test.skipIf(!posix)("POSIX agent prints a code, runs commands and exits when the
     assert.equal((await end(agent.code)).status, 200);
     assert.equal(await agent.exit(), 0);
   } finally {
+    agent.stop();
+  }
+});
+
+test.skipIf(!posix)("POSIX agent runs raw shell syntax and reports failed commands with their exit code", async () => {
+  const agent = await startShellAgent();
+  try {
+    const grouped = await fetch(`${baseUrl}/${agent.code}/send`, { method: "POST", body: "{ printf grouped; }" });
+    assert.equal(grouped.status, 200, agent.output());
+    assert.equal(await grouped.text(), "grouped");
+
+    const failed = await send(agent.code, "printf broken; exit 3");
+    assertOk(failed, agent);
+    assert.equal(failed.text, "broken");
+    assert.equal(failed.headers.get("X-Exit-Code"), "3");
+  } finally {
+    await end(agent.code);
     agent.stop();
   }
 });

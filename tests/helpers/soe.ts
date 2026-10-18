@@ -78,6 +78,7 @@ export async function startAgent(command: string, args: string[], options: Spawn
 export async function send(code: string, command: string, options: SendOptions = {}): Promise<CommandResult> {
   const response = await fetch(`${baseUrl}/${code}/send?timeout=${options.timeout ?? 10}`, {
     method: "POST",
+    headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ body: command, cwd: options.cwd })
   });
   return { status: response.status, text: await response.text(), headers: response.headers };
