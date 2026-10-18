@@ -1,11 +1,9 @@
 import { defaultCommandTimeoutSeconds } from "../shared/config";
 import { quotePowerShell } from "../shared/strings";
+import { scriptUsage } from "../site/pages";
 
 export function powerShellAgentScript(baseUrl: string): string {
-  return `# Shell Over Edge agent. Run it on the machine you want to reach:
-#   irm ${baseUrl} | iex
-# It prints a session code. Send commands from anywhere:
-#   curl ${baseUrl}/<code> -d 'Get-Location'
+  return `${scriptUsage(baseUrl, "#")}
 $ErrorActionPreference = "Stop"
 $BaseUrl = ${quotePowerShell(baseUrl)}
 $PlatformName = if ($PSVersionTable.Platform) { [string]$PSVersionTable.Platform } else { [string][Environment]::OSVersion.Platform }
