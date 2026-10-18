@@ -2,13 +2,11 @@
 
 Reach any shell from anywhere.
 
-[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
+Temporary shell access over HTTPS for when SSH, a VPN or open ports aren't an option. Start the agent on the machine you want to reach, then send commands to its code with curl.
 
-Shell Over Edge is a tiny Cloudflare Worker relay for temporary shell access when SSH, VPN, or inbound ports are not available. Start the generated agent on the target machine, copy the 8-character code, send commands over HTTPS, and get plain text output back.
+## Start the agent
 
-## Start
-
-macOS/Linux:
+macOS and Linux:
 
 ```sh
 curl -sS https://soe.stoff.dev | sh
@@ -20,71 +18,90 @@ Windows PowerShell:
 irm https://soe.stoff.dev | iex
 ```
 
-The target prints:
+It prints a code and copies it to your clipboard:
 
 ```text
 Session: 1234abcd (copied to clipboard)
 Stop anytime: Ctrl+C
 ```
 
-## Commands
-
-Raw command:
+## Send commands
 
 ```sh
-curl -sS -X POST https://soe.stoff.dev/1234abcd/send --data 'pwd'
+curl https://soe.stoff.dev/1234abcd -d pwd
 ```
 
-Command with working directory:
+Output comes back as plain text, stdout then stderr, with the exit code in the `X-Exit-Code` header. Exit code 124 means the command timed out.
+
+Pick a working directory or timeout (default 30 seconds, up to 50):
 
 ```sh
-curl -sS -X POST https://soe.stoff.dev/1234abcd/send \
-  --data '{"body":"pwd","cwd":"/tmp"}'
+curl 'https://soe.stoff.dev/1234abcd?cwd=/tmp&timeout=10' -d 'ls -la'
 ```
 
-Custom timeout:
+Run a script file:
 
 ```sh
-curl -sS -X POST 'https://soe.stoff.dev/1234abcd/send?timeout=10' --data 'sleep 5'
+curl https://soe.stoff.dev/1234abcd --data-binary @deploy.sh
 ```
 
-Close the session:
+Check the session, or end it:
 
 ```sh
-curl -sS -X POST https://soe.stoff.dev/1234abcd/end
+curl https://soe.stoff.dev/1234abcd
+curl -X DELETE https://soe.stoff.dev/1234abcd
 ```
 
-Default timeout is 30 seconds. `timeout` is URL-only. JSON command bodies support `body` and `cwd`.
+The status is JSON: `code`, `shell` (`sh` or `powershell`), `platform`, `connected` and `expiresAt`.
 
-## API
+## For scripts and agents
 
-| Method | Path                      | Body                                      | Response                                                  |
-| ------ | ------------------------- | ----------------------------------------- | --------------------------------------------------------- |
-| `GET`  | `/`                       | empty                                     | POSIX agent by default, PowerShell for PowerShell clients |
-| `POST` | `/<code>/send`            | raw text or `{"body":"pwd","cwd":"/tmp"}` | command output                                            |
-| `POST` | `/<code>/send?timeout=10` | raw text or `{"body":"pwd","cwd":"/tmp"}` | command output                                            |
-| `POST` | `/<code>/end`             | empty                                     | `ended`                                                   |
+Ask for JSON to get the exit code, stdout and stderr separately:
 
-## Architecture
+```sh
+curl https://soe.stoff.dev/1234abcd -H 'Accept: application/json' -d 'npm test'
+```
+
+```json
+{ "exitCode": 0, "stdout": "...", "stderr": "" }
+```
+
+Send JSON instead of a raw command with `Content-Type: application/json` and `{"command": "npm test", "cwd": "/app", "timeout": 50}`.
+
+Errors are plain text with a status code: 404 unknown session, 410 ended, 413 too large, 429 too many requests, 504 no result in time.
+
+## Limits
+
+| Item            | Limit                 |
+| --------------- | --------------------- |
+| Session         | 2 hours               |
+| Command         | 64 KB                 |
+| Output          | 1 MB                  |
+| Timeout         | 1-50 seconds          |
+| Session lookups | 300 per minute per IP |
+
+The 8-character code is the only key, so treat it like a password and end the session when you're done.
+
+## How it works
 
 ```mermaid
 sequenceDiagram
     participant Target as "Target shell"
     participant Worker as "Cloudflare Worker"
-    participant Bridge as "Durable Object"
+    participant Session as "Durable Object"
     participant Sender as "Sender"
 
     Target->>Worker: "GET / | sh"
-    Worker-->>Target: "agent + code"
-    Target->>Bridge: "GET /next"
-    Sender->>Bridge: "POST /1234abcd/send"
-    Bridge-->>Target: "command"
+    Target->>Session: "POST / (create, get code)"
+    Target->>Session: "GET /code/next"
+    Sender->>Session: "POST /code"
+    Session-->>Target: "command"
     Target->>Target: "run command"
-    Target->>Bridge: "POST /result/:id"
-    Bridge-->>Sender: "plain text output"
+    Target->>Session: "POST /code/result/:id"
+    Session-->>Sender: "output"
 ```
 
-R2 stores session metadata and code lookups. A Durable Object owns each live command queue, pairs results with the right sender, and prevents parallel sends from mixing output.
+One Cloudflare Worker and one Durable Object per session. The Durable Object holds the session, queues commands in order, matches each result to its sender, and deletes itself when the session expires. The agents are plain POSIX sh and PowerShell, with nothing to install.
 
 ## Development
 
@@ -96,34 +113,8 @@ vp dev
 curl -sS http://127.0.0.1:8787/ | sh
 ```
 
-`vp check` formats, lints and type-checks, and runs on every commit. `vp test` runs the tests. Both run before every deploy.
-
-Extra checks:
+`vp check` formats, lints and type-checks, and runs on every commit. `vp test` runs the end-to-end tests against the real Worker with real POSIX and PowerShell agents. Both run before every deploy.
 
 ```sh
-vp run test:load
 vp run test:containers
-SOE_BASE_URL=https://soe.stoff.dev vp run smoke:prod
 ```
-
-## Tech Decisions
-
-- Cloudflare Worker keeps the public surface to one HTTPS edge deployment.
-- Durable Objects give each session one ordered queue and deterministic result pairing.
-- R2 stores only session metadata and code lookup records.
-- Generated POSIX and PowerShell agents avoid binary installs and release assets.
-- The 8-character code is the capability; `/end` closes it explicitly.
-
-## Limits
-
-| Item            | Limit        |
-| --------------- | ------------ |
-| Session code    | 8 characters |
-| Session TTL     | 2 hours      |
-| Command body    | 64 KB        |
-| Result body     | 1 MB         |
-| Command timeout | 1-50 seconds |
-
-Automation instructions: [llms.txt](llms.txt)
-
-Agent skill: [skills/shell-over-edge/SKILL.md](skills/shell-over-edge/SKILL.md)

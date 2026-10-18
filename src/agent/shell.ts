@@ -1,12 +1,14 @@
-import { agentProtocolVersion, defaultCommandTimeoutSeconds } from "../shared/config";
+import { defaultCommandTimeoutSeconds } from "../shared/config";
 import { quoteShell } from "../shared/strings";
 
-export function shellAgentScript(baseUrl: string, code: string): string {
+export function shellAgentScript(baseUrl: string): string {
   return `#!/bin/sh
+# Shell Over Edge agent. Run it on the machine you want to reach:
+#   curl -sS ${baseUrl} | sh
+# It prints a session code. Send commands from anywhere:
+#   curl ${baseUrl}/<code> -d pwd
 set -u
 BASE_URL=${quoteShell(baseUrl)}
-SESSION_ID=${quoteShell(code)}
-AGENT_VERSION=${quoteShell(agentProtocolVersion)}
 
 copy_text() {
   if command -v pbcopy >/dev/null 2>&1; then
@@ -36,29 +38,31 @@ header_value() {
   awk -F': ' -v name="$1" 'tolower($1) == tolower(name) { sub("\\r$", "", $2); print $2; exit }' "$2"
 }
 
-post_bye() {
+end_session() {
   if [ "\${SOE_NO_END_ON_EXIT:-}" = "1" ]; then
     return 0
   fi
-  curl -fsS --connect-timeout 5 --max-time 10 -X POST "$BASE_URL/$SESSION_ID/end" >/dev/null 2>&1 || true
+  curl -fsS --connect-timeout 5 --max-time 10 -X DELETE "$BASE_URL/$CODE" >/dev/null 2>&1 || true
 }
 
 run_shell() {
   command_body=$1
   cwd=$2
   timeout_seconds=$3
-  output_file=$4
+  stdout_file=$4
+  stderr_file=$5
   if [ -n "$cwd" ]; then
     if [ ! -d "$cwd" ]; then
-      printf 'Working directory does not exist: %s\\n' "$cwd" > "$output_file"
+      printf 'Working directory does not exist: %s\\n' "$cwd" > "$stderr_file"
       return 1
     fi
     cd "$cwd" || return 1
   fi
   if command -v timeout >/dev/null 2>&1; then
-    timeout "$timeout_seconds" sh -c "$command_body" > "$output_file" 2>&1
+    timeout "$timeout_seconds" sh -c "$command_body" > "$stdout_file" 2> "$stderr_file"
+    exit_code=$?
   else
-    sh -c "$command_body" > "$output_file" 2>&1 &
+    sh -c "$command_body" > "$stdout_file" 2> "$stderr_file" &
     command_pid=$!
     ( sleep "$timeout_seconds"; kill "$command_pid" 2>/dev/null ) &
     timeout_pid=$!
@@ -66,29 +70,34 @@ run_shell() {
     exit_code=$?
     kill "$timeout_pid" 2>/dev/null || true
     wait "$timeout_pid" 2>/dev/null || true
-    return "$exit_code"
+    [ "$exit_code" = "143" ] && exit_code=124
   fi
+  if [ "$exit_code" = "124" ]; then
+    printf 'Command timed out after %s seconds\\n' "$timeout_seconds" >> "$stderr_file"
+  fi
+  return "$exit_code"
 }
 
-if copy_text "$SESSION_ID"; then
+CODE=$(curl -fsS --connect-timeout 5 --max-time 15 -X POST -H "X-Agent-Shell: sh" -H "X-Agent-Platform: $(uname -s)" "$BASE_URL/") || exit 1
+
+if copy_text "$CODE"; then
   CLIPBOARD='copied to clipboard'
 else
   CLIPBOARD='clipboard copy unavailable'
 fi
 
-printf 'Session: %s (%s)\\nStop anytime: Ctrl+C\\n' "$SESSION_ID" "$CLIPBOARD"
-trap 'post_bye; exit 0' INT TERM EXIT
-curl -fsS --connect-timeout 5 --max-time 15 -X POST -H "X-Agent-Platform: $(uname -s)" "$BASE_URL/api/sessions/$SESSION_ID/hello" >/dev/null
+printf 'Session: %s (%s)\\nStop anytime: Ctrl+C\\n' "$CODE" "$CLIPBOARD"
+trap 'end_session; exit 0' INT TERM EXIT
 
 while true; do
   headers_file=$(mktemp)
   body_file=$(mktemp)
-  status_code=$(curl -sS --connect-timeout 5 --max-time 35 -D "$headers_file" -o "$body_file" -w "%{http_code}" "$BASE_URL/api/sessions/$SESSION_ID/next" || printf '000')
+  status_code=$(curl -sS --connect-timeout 5 --max-time 35 -D "$headers_file" -o "$body_file" -w "%{http_code}" "$BASE_URL/$CODE/next" || printf '000')
   if [ "$status_code" = "204" ]; then
     rm -f "$headers_file" "$body_file"
     continue
   fi
-  if [ "$status_code" = "410" ] || [ "$status_code" = "404" ] || [ "$status_code" = "401" ]; then
+  if [ "$status_code" = "410" ] || [ "$status_code" = "404" ]; then
     rm -f "$headers_file" "$body_file"
     exit 0
   fi
@@ -103,12 +112,15 @@ while true; do
   cwd=$(decode_b64 "$(header_value X-Command-Cwd-Base64 "$headers_file")")
   timeout_seconds=$(header_value X-Command-Timeout "$headers_file")
   [ -n "$timeout_seconds" ] || timeout_seconds=${defaultCommandTimeoutSeconds}
-  result_file=$(mktemp)
+  stdout_file=$(mktemp)
+  stderr_file=$(mktemp)
   command_body=$(cat "$body_file")
-  (run_shell "$command_body" "$cwd" "$timeout_seconds" "$result_file")
+  (run_shell "$command_body" "$cwd" "$timeout_seconds" "$stdout_file" "$stderr_file")
   exit_code=$?
-  curl -fsS --connect-timeout 5 --max-time 30 -X POST --data-binary "@$result_file" "$BASE_URL/api/sessions/$SESSION_ID/result/$command_id?exit=$exit_code" >/dev/null || true
-  rm -f "$headers_file" "$body_file" "$result_file"
+  stdout_bytes=$(wc -c < "$stdout_file" | tr -d ' ')
+  cat "$stdout_file" "$stderr_file" > "$body_file"
+  curl -fsS --connect-timeout 5 --max-time 30 -X POST -H "X-Stdout-Bytes: $stdout_bytes" --data-binary "@$body_file" "$BASE_URL/$CODE/result/$command_id?exit=$exit_code" >/dev/null || true
+  rm -f "$headers_file" "$body_file" "$stdout_file" "$stderr_file"
 done
 `;
 }

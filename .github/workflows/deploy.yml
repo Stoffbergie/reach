@@ -35,6 +35,15 @@ jobs:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
 
-      - run: vp run smoke:prod
-        env:
-          SOE_BASE_URL: https://soe.stoff.dev
+      - name: Smoke test
+        run: |
+          curl -fsS --retry 5 --retry-all-errors https://soe.stoff.dev > agent.sh
+          timeout 60 sh agent.sh > agent.log 2>&1 &
+          for attempt in $(seq 1 20); do
+            code=$(sed -n 's/^Session: \([a-z0-9]*\).*/\1/p' agent.log)
+            [ -n "$code" ] && break
+            sleep 1
+          done
+          test "$(curl -fsS "https://soe.stoff.dev/$code" -d 'printf soe-smoke')" = "soe-smoke"
+          curl -fsS -X DELETE "https://soe.stoff.dev/$code"
+          wait

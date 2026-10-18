@@ -3,4 +3,6 @@ export const maxResultBytes = 1024 * 1024;
 export const maxCommandBytes = 64 * 1024;
 export const defaultCommandTimeoutSeconds = 30;
 export const maxCommandTimeoutSeconds = 50;
-export const agentProtocolVersion = "0.3.0";
+export const maxCommandWaitMs = 55_000;
+export const nextWaitMs = 25_000;
+export const resultGraceMs = 5_000;

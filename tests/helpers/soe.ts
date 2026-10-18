@@ -18,6 +18,20 @@ export type CommandResult = {
   headers: Headers;
 };
 
+export type SessionStatus = {
+  code: string;
+  shell: string;
+  platform: string;
+  connected: boolean;
+  expiresAt: string;
+};
+
+export type JsonOutput = {
+  exitCode: number;
+  stdout: string;
+  stderr: string;
+};
+
 export type SendOptions = {
   timeout?: number;
   cwd?: string;
@@ -76,16 +90,14 @@ export async function startAgent(command: string, args: string[], options: Spawn
 }
 
 export async function send(code: string, command: string, options: SendOptions = {}): Promise<CommandResult> {
-  const response = await fetch(`${baseUrl}/${code}/send?timeout=${options.timeout ?? 10}`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ body: command, cwd: options.cwd })
-  });
+  const query = new URLSearchParams({ timeout: String(options.timeout ?? 10) });
+  if (options.cwd) query.set("cwd", options.cwd);
+  const response = await fetch(`${baseUrl}/${code}?${query.toString()}`, { method: "POST", body: command });
   return { status: response.status, text: await response.text(), headers: response.headers };
 }
 
 export async function end(code: string): Promise<Response> {
-  return fetch(`${baseUrl}/${code}/end`, { method: "POST" });
+  return fetch(`${baseUrl}/${code}`, { method: "DELETE" });
 }
 
 export function sleep(ms: number): Promise<void> {
