@@ -2,7 +2,7 @@ import { mkdtemp, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { spawnSync } from "node:child_process";
-import { test } from "vitest";
+import { test } from "vite-plus/test";
 import { strict as assert } from "node:assert";
 import { shellAgentScript } from "../../src/agent/shell";
 import { powerShellAgentScript } from "../../src/agent/powershell";
@@ -54,7 +54,7 @@ test("generated shell agent is relay-only and portable", () => {
   assert.ok(!script.includes("soe-webrtc"));
   assert.ok(!script.includes("X-Agent-User"));
   assert.ok(!script.includes("$(whoami)"));
-  assert.ok(!script.includes("--data-binary \"$(pwd)\""));
+  assert.ok(!script.includes('--data-binary "$(pwd)"'));
   assert.ok(!script.includes("X-Command-Type"));
   assert.ok(!script.includes("Authorization"));
   assert.ok(!script.includes("/api/agent/"));
@@ -107,9 +107,13 @@ test("generated PowerShell agent is relay-only", () => {
   assert.ok(!script.includes("?token" + "="));
 });
 
-test.skipIf(!powerShell)("generated PowerShell agent parses", async () => {
-  await assertPowerShellParses(powerShell, powerShellAgentScript("https://soe.test", meta));
-}, 30_000);
+test.skipIf(!powerShell)(
+  "generated PowerShell agent parses",
+  async () => {
+    await assertPowerShellParses(powerShell, powerShellAgentScript("https://soe.test", meta));
+  },
+  30_000
+);
 
 async function assertShellSyntax(sh: string, script: string): Promise<void> {
   const dir = await mkdtemp(join(tmpdir(), "soe-shell-"));

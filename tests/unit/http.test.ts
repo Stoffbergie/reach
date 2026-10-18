@@ -1,4 +1,4 @@
-import { test } from "vitest";
+import { test } from "vite-plus/test";
 import { strict as assert } from "node:assert";
 import { cleanString, normalizeTimeout, readLimitedText, textResponse } from "../../src/shared/http";
 import { PayloadTooLargeError } from "../../src/shared/http";
@@ -17,10 +17,7 @@ test("cleans strings without coercing non-strings", () => {
 
 test("reads limited text and rejects oversized bodies", async () => {
   assert.equal(await readLimitedText(new Request("https://soe.test", { method: "POST", body: "hello" }), 5), "hello");
-  await assert.rejects(
-    readLimitedText(new Request("https://soe.test", { method: "POST", body: "hello!" }), 5),
-    PayloadTooLargeError
-  );
+  await assert.rejects(readLimitedText(new Request("https://soe.test", { method: "POST", body: "hello!" }), 5), PayloadTooLargeError);
 });
 
 test("text responses always set no-store and content type", () => {
