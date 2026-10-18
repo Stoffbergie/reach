@@ -144,7 +144,7 @@ async function readCommandInput(request: Request): Promise<{ body: string; cwd: 
   const url = new URL(request.url);
   const raw = (await readLimitedText(request, maxCommandBytes)).trim();
   const timeout = normalizeTimeout(url.searchParams.get("timeout") || defaultCommandTimeoutSeconds);
-  if (!raw.startsWith("{")) {
+  if (!request.headers.get("content-type")?.includes("application/json")) {
     return { body: raw, cwd: "", timeout };
   }
 
