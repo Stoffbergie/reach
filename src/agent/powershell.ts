@@ -1,19 +1,19 @@
-import { agentProtocolVersion, defaultCommandTimeoutSeconds } from "../shared/config";
+import { defaultCommandTimeoutSeconds } from "../shared/config";
 import { quotePowerShell } from "../shared/strings";
 
-export function powerShellAgentScript(baseUrl: string, code: string): string {
-  return `$ErrorActionPreference = "Stop"
+export function powerShellAgentScript(baseUrl: string): string {
+  return `# Shell Over Edge agent. Run it on the machine you want to reach:
+#   irm ${baseUrl} | iex
+# It prints a session code. Send commands from anywhere:
+#   curl ${baseUrl}/<code> -d 'Get-Location'
+$ErrorActionPreference = "Stop"
 $BaseUrl = ${quotePowerShell(baseUrl)}
-$SessionId = ${quotePowerShell(code)}
-$AgentVersion = ${quotePowerShell(agentProtocolVersion)}
 $PlatformName = if ($PSVersionTable.Platform) { [string]$PSVersionTable.Platform } else { [string][Environment]::OSVersion.Platform }
-$Headers = @{
-  "X-Agent-Platform" = $PlatformName
-}
+$Code = ([string](Invoke-RestMethod -Method Post -Uri "$BaseUrl/" -Headers @{ "X-Agent-Shell" = "powershell"; "X-Agent-Platform" = $PlatformName })).Trim()
 $Clipboard = "copied to clipboard"
 
 try {
-  Set-Clipboard -Value $SessionId
+  Set-Clipboard -Value $Code
 } catch {
   $Clipboard = "clipboard copy unavailable"
 }
@@ -42,9 +42,9 @@ function Get-ErrorResponse([object]$ErrorRecord) {
 }
 
 function Invoke-AgentRequest {
-  param([string]$Method, [string]$Path, [string]$OutFile, [byte[]]$Body, [string]$ContentType)
+  param([string]$Method, [string]$Path, [string]$OutFile, [byte[]]$Body, [string]$ContentType, [hashtable]$Headers = @{})
   $Request = [System.Net.WebRequest]::Create("$BaseUrl$Path")
-  $Request.Method = $Method
+  $Request.Method = $Method.ToUpperInvariant()
   $Request.Timeout = 35000
   try { $Request.ReadWriteTimeout = 35000 } catch {}
   foreach ($Key in $Headers.Keys) {
@@ -92,9 +92,9 @@ function Invoke-AgentRequest {
   }
 }
 
-function Send-Bye {
+function Stop-Session {
   if ($env:SOE_NO_END_ON_EXIT -eq "1") { return }
-  try { Invoke-AgentRequest -Method Post -Path "/$SessionId/end" | Out-Null } catch {}
+  try { Invoke-AgentRequest -Method Delete -Path "/$Code" | Out-Null } catch {}
 }
 
 function Start-CommandJob([string]$CommandBody, [string]$Cwd) {
@@ -103,17 +103,19 @@ function Start-CommandJob([string]$CommandBody, [string]$Cwd) {
     try {
       if ($Cwd) {
         if (!(Test-Path -LiteralPath $Cwd -PathType Container)) {
-          [pscustomobject]@{ ExitCode = 1; Output = "Working directory does not exist: $Cwd\`n" }
+          [pscustomobject]@{ ExitCode = 1; Stdout = ""; Stderr = "Working directory does not exist: $Cwd\`n" }
           return
         }
         Set-Location -LiteralPath $Cwd
       }
       $global:LASTEXITCODE = $null
-      $Output = & ([scriptblock]::Create($CommandBody)) *>&1 | Out-String
+      $Output = @(& ([scriptblock]::Create($CommandBody)) *>&1)
+      $Stdout = $Output | Where-Object { $_ -isnot [System.Management.Automation.ErrorRecord] } | Out-String
+      $Stderr = $Output | Where-Object { $_ -is [System.Management.Automation.ErrorRecord] } | Out-String
       $ExitCode = if ($null -ne $global:LASTEXITCODE) { [int]$global:LASTEXITCODE } else { 0 }
-      [pscustomobject]@{ ExitCode = $ExitCode; Output = $Output }
+      [pscustomobject]@{ ExitCode = $ExitCode; Stdout = $Stdout; Stderr = $Stderr }
     } catch {
-      [pscustomobject]@{ ExitCode = 1; Output = $_.Exception.Message }
+      [pscustomobject]@{ ExitCode = 1; Stdout = ""; Stderr = $_.Exception.Message }
     }
   }
   if (Get-Command Start-ThreadJob -ErrorAction SilentlyContinue) {
@@ -122,54 +124,44 @@ function Start-CommandJob([string]$CommandBody, [string]$Cwd) {
   return Start-Job -ScriptBlock $Block -ArgumentList $CommandBody, $Cwd
 }
 
-function Run-Command([string]$CommandBody, [string]$Cwd, [string]$ResultFile, [int]$TimeoutSeconds) {
-  if ($TimeoutSeconds -lt 1) { $TimeoutSeconds = ${defaultCommandTimeoutSeconds} }
+function Run-Command([string]$CommandBody, [string]$Cwd, [int]$TimeoutSeconds) {
   $Job = $null
   try {
     $Job = Start-CommandJob -CommandBody $CommandBody -Cwd $Cwd
     if (Wait-Job $Job -Timeout $TimeoutSeconds) {
-      $Results = @(Receive-Job $Job)
-      $Result = $Results | Select-Object -Last 1
-      if (!$Result) {
-        [IO.File]::WriteAllText($ResultFile, "")
-        return 0
-      }
-      [IO.File]::WriteAllText($ResultFile, [string]$Result.Output)
-      return [int]$Result.ExitCode
+      $Result = @(Receive-Job $Job) | Select-Object -Last 1
+      if (!$Result) { return [pscustomobject]@{ ExitCode = 0; Stdout = ""; Stderr = "" } }
+      return $Result
     }
     Stop-Job $Job -ErrorAction SilentlyContinue
-    [IO.File]::WriteAllText($ResultFile, "Command timed out after $TimeoutSeconds seconds\`n")
-    return 124
+    return [pscustomobject]@{ ExitCode = 124; Stdout = ""; Stderr = "Command timed out after $TimeoutSeconds seconds\`n" }
   } catch {
-    [IO.File]::WriteAllText($ResultFile, $_.Exception.Message)
-    return 1
+    return [pscustomobject]@{ ExitCode = 1; Stdout = ""; Stderr = $_.Exception.Message }
   } finally {
     if ($Job) { Remove-Job $Job -ErrorAction SilentlyContinue }
   }
 }
 
-Write-Host "Session: $SessionId ($Clipboard)"
+Write-Host "Session: $Code ($Clipboard)"
 Write-Host "Stop anytime: Ctrl+C"
 
 try { [Console]::TreatControlCAsInput = $false } catch {}
 try {
-  Invoke-AgentRequest -Method Post -Path "/api/sessions/$SessionId/hello" | Out-Null
   while ($true) {
     $BodyFile = [IO.Path]::GetTempFileName()
-    $ResultFile = [IO.Path]::GetTempFileName()
-    $Response = Invoke-AgentRequest -Method Get -Path "/api/sessions/$SessionId/next" -OutFile $BodyFile
+    $Response = Invoke-AgentRequest -Method Get -Path "/$Code/next" -OutFile $BodyFile
     $StatusCode = [int]$Response.StatusCode
     if ($StatusCode -eq 204) {
-      Remove-Item $BodyFile, $ResultFile -Force
+      Remove-Item $BodyFile -Force
       continue
     }
-    if ($StatusCode -eq 410 -or $StatusCode -eq 401 -or $StatusCode -eq 404) {
-      Remove-Item $BodyFile, $ResultFile -Force
+    if ($StatusCode -eq 410 -or $StatusCode -eq 404) {
+      Remove-Item $BodyFile -Force
       break
     }
     if ($StatusCode -ne 200) {
       if (Test-Path $BodyFile) { Get-Content $BodyFile -Raw | Write-Host }
-      Remove-Item $BodyFile, $ResultFile -Force
+      Remove-Item $BodyFile -Force
       Start-Sleep -Seconds 1
       continue
     }
@@ -178,12 +170,14 @@ try {
     $TimeoutSeconds = [int](Get-ResponseHeader $Response "X-Command-Timeout")
     if ($TimeoutSeconds -lt 1) { $TimeoutSeconds = ${defaultCommandTimeoutSeconds} }
     $CommandBody = Get-Content $BodyFile -Raw
-    $ExitCode = Run-Command -CommandBody $CommandBody -Cwd $Cwd -ResultFile $ResultFile -TimeoutSeconds $TimeoutSeconds
-    Invoke-AgentRequest -Method Post -Path "/api/sessions/$SessionId/result/\${CommandId}?exit=$ExitCode" -Body ([IO.File]::ReadAllBytes($ResultFile)) -ContentType "application/octet-stream" | Out-Null
-    Remove-Item $BodyFile, $ResultFile -Force
+    Remove-Item $BodyFile -Force
+    $Result = Run-Command -CommandBody $CommandBody -Cwd $Cwd -TimeoutSeconds $TimeoutSeconds
+    $Stdout = [Text.Encoding]::UTF8.GetBytes([string]$Result.Stdout)
+    $Stderr = [Text.Encoding]::UTF8.GetBytes([string]$Result.Stderr)
+    Invoke-AgentRequest -Method Post -Path "/$Code/result/\${CommandId}?exit=$([int]$Result.ExitCode)" -Body ([byte[]]($Stdout + $Stderr)) -ContentType "application/octet-stream" -Headers @{ "X-Stdout-Bytes" = [string]$Stdout.Length } | Out-Null
   }
 } finally {
-  Send-Bye
+  Stop-Session
 }
 `;
 }

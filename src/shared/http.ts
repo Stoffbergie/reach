@@ -1,7 +1,5 @@
 import { defaultCommandTimeoutSeconds, maxCommandTimeoutSeconds } from "./config";
 
-const textDecoder = new TextDecoder();
-
 export class PayloadTooLargeError extends Error {
   constructor(readonly maxBytes: number) {
     super(`Request body exceeds ${maxBytes} bytes`);
@@ -10,24 +8,17 @@ export class PayloadTooLargeError extends Error {
 
 export class BadRequestError extends Error {}
 
-export async function readLimitedText(request: Request, maxBytes: number): Promise<string> {
-  const bytes = await request.arrayBuffer();
+export async function readLimitedBytes(request: Request, maxBytes: number): Promise<Uint8Array> {
+  const bytes = new Uint8Array(await request.arrayBuffer());
   if (bytes.byteLength > maxBytes) throw new PayloadTooLargeError(maxBytes);
-  return textDecoder.decode(bytes);
+  return bytes;
 }
 
-export function textResponse(value: string, status = 200, contentType = "text/plain; charset=utf-8"): Response {
+export function textResponse(value: string, status = 200, headers: Record<string, string> = {}): Response {
   return new Response(value, {
     status,
-    headers: {
-      "Cache-Control": "no-store",
-      "Content-Type": contentType
-    }
+    headers: { "Content-Type": "text/plain; charset=utf-8", ...headers }
   });
-}
-
-export function publicBaseUrl(request: Request): string {
-  return new URL(request.url).origin;
 }
 
 export function cleanString(value: unknown, maxLength: number): string {
@@ -36,6 +27,6 @@ export function cleanString(value: unknown, maxLength: number): string {
 
 export function normalizeTimeout(value: unknown): number {
   const parsed = Number(value);
-  if (!Number.isFinite(parsed)) return defaultCommandTimeoutSeconds;
+  if (value === null || value === undefined || value === "" || !Number.isFinite(parsed)) return defaultCommandTimeoutSeconds;
   return Math.min(Math.max(Math.trunc(parsed), 1), maxCommandTimeoutSeconds);
 }

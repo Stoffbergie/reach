@@ -18,8 +18,6 @@
     "build": "vp build",
     "check": "vp check && vp test run",
     "deploy": "vp build && wrangler deploy",
-    "smoke:prod": "node scripts/smoke-prod.mjs",
-    "test:load": "vp test run tests/e2e/relay-load.test.ts",
     "test:containers": "SOE_DOCKER_E2E=1 vp test run tests/e2e/linux-containers.test.ts",
     "prepare": "vp config"
   },

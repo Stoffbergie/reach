@@ -4,7 +4,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { performance } from "node:perf_hooks";
 import { test } from "vite-plus/test";
-import { assertOk, baseUrl, end, findCommand, send, sessionCodePattern, startPowerShellAgent, startShellAgent } from "../helpers/soe";
+import { assertOk, baseUrl, end, findCommand, send, sessionCodePattern, startPowerShellAgent, startShellAgent, type JsonOutput, type SessionStatus } from "../helpers/soe";
 
 const posix = Boolean(findCommand("sh") && findCommand("curl"));
 const powerShell = findCommand(process.platform === "win32" ? ["pwsh", "powershell.exe"] : ["pwsh"]);
@@ -29,9 +29,9 @@ test.skipIf(!posix)("POSIX agent prints a code, runs commands and exits when the
 test.skipIf(!posix)("POSIX agent runs raw shell syntax and reports failed commands with their exit code", async () => {
   const agent = await startShellAgent();
   try {
-    const grouped = await fetch(`${baseUrl}/${agent.code}/send`, { method: "POST", body: "{ printf grouped; }" });
-    assert.equal(grouped.status, 200, agent.output());
-    assert.equal(await grouped.text(), "grouped");
+    const grouped = await send(agent.code, "{ printf grouped; }");
+    assertOk(grouped, agent);
+    assert.equal(grouped.text, "grouped");
 
     const failed = await send(agent.code, "printf broken; exit 3");
     assertOk(failed, agent);
@@ -104,6 +104,14 @@ test.skipIf(!powerShell)(
       const result = await send(agent.code, "Write-Output hello");
       assertOk(result, agent);
       assert.equal(result.text.trim(), "hello");
+
+      const status = (await (await fetch(`${baseUrl}/${agent.code}`)).json()) as SessionStatus;
+      assert.equal(status.shell, "powershell");
+
+      const split = await fetch(`${baseUrl}/${agent.code}`, { method: "POST", headers: { Accept: "application/json" }, body: "Write-Output out; Write-Error err" });
+      const output = (await split.json()) as JsonOutput;
+      assert.equal(output.stdout.trim(), "out", agent.output());
+      assert.match(output.stderr, /err/);
 
       const startedAt = performance.now();
       const slow = await send(agent.code, "Start-Sleep -Seconds 10; Write-Output too-late", { timeout: 2 });

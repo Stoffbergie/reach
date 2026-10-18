@@ -19,7 +19,7 @@ test("relay bridge handles a burst of parallel commands without timeouts or resu
     }
 
     for (const command of commands.reverse()) {
-      const response = await fetch(`${baseUrl}/api/sessions/${session.id}/result/${command.id}?exit=0`, {
+      const response = await fetch(`${baseUrl}/${session.id}/result/${command.id}?exit=0`, {
         method: "POST",
         body: `done:${command.body}`
       });
@@ -35,22 +35,21 @@ test("relay bridge handles a burst of parallel commands without timeouts or resu
       assert.equal(item.response.text, `done:${item.body}`);
     }
   } finally {
-    await fetch(`${baseUrl}/${session.id}/end`, { method: "POST" });
+    await fetch(`${baseUrl}/${session.id}`, { method: "DELETE" });
   }
 });
 
 async function createSession(): Promise<{ id: string }> {
-  const response = await fetch(baseUrl);
-  assert.equal(response.status, 200);
-  const id = response.headers.get("X-Session-Id") || "";
+  const response = await fetch(baseUrl, { method: "POST" });
+  assert.equal(response.status, 201);
+  const id = (await response.text()).trim();
   assert.match(id, /^[23456789abcdefghjkmnpqrstuvwxyz]{8}$/);
-  await response.text();
   return { id };
 }
 
 async function nextCommand(sessionId: string): Promise<{ id: string; body: string }> {
   for (let attempt = 0; attempt < 20; attempt += 1) {
-    const response = await fetch(`${baseUrl}/api/sessions/${sessionId}/next`);
+    const response = await fetch(`${baseUrl}/${sessionId}/next`);
     if (response.status === 200) {
       const id = response.headers.get("X-Command-Id") || "";
       assert.ok(id);
