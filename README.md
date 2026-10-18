@@ -94,7 +94,7 @@ Errors are plain text with a status code:
 | 400    | Empty command or invalid JSON               |
 | 404    | Unknown session                             |
 | 410    | Session ended                               |
-| 413    | Command over 64 KB                          |
+| 413    | Command over 64 KB or output over 1 MB      |
 | 429    | More than 300 lookups a minute from your IP |
 | 504    | No result in time                           |
 

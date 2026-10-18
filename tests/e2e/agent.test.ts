@@ -57,6 +57,28 @@ test.skipIf(!posix)("POSIX agent runs commands in the requested working director
   }
 });
 
+test.skipIf(!posix)("POSIX agent reports oversized output and keeps accepting commands", async () => {
+  const agent = await startShellAgent();
+  try {
+    const boundary = await send(agent.code, "head -c 1048576 /dev/zero");
+    assertOk(boundary, agent);
+    assert.equal(boundary.text.length, 1048576);
+
+    const startedAt = performance.now();
+    const oversized = await send(agent.code, "head -c 1048576 /dev/zero; printf x >&2", { timeout: 2 });
+    assert.equal(oversized.status, 413);
+    assert.match(oversized.text, /Command output exceeds 1048576 bytes/);
+    assert.ok(performance.now() - startedAt < 4000, agent.output());
+
+    const recovered = await send(agent.code, "printf recovered");
+    assertOk(recovered, agent);
+    assert.equal(recovered.text, "recovered");
+  } finally {
+    await end(agent.code);
+    agent.stop();
+  }
+});
+
 test.skipIf(!posix)("POSIX agent keeps parallel command output apart", async () => {
   const agent = await startShellAgent();
   try {
