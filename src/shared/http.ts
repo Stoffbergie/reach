@@ -1,4 +1,3 @@
-import type { Env } from "../worker/env";
 import { defaultCommandTimeoutSeconds, maxCommandTimeoutSeconds } from "./config";
 
 const textDecoder = new TextDecoder();
@@ -27,8 +26,8 @@ export function textResponse(value: string, status = 200, contentType = "text/pl
   });
 }
 
-export function publicBaseUrl(request: Request, env: Env): string {
-  return (env.BASE_URL || new URL(request.url).origin).replace(/\/$/, "");
+export function publicBaseUrl(request: Request): string {
+  return new URL(request.url).origin;
 }
 
 export function cleanString(value: unknown, maxLength: number): string {
