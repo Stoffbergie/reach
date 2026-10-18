@@ -1,11 +1,10 @@
-import type { SessionMeta } from "../domain/session";
 import { agentProtocolVersion, defaultCommandTimeoutSeconds } from "../shared/config";
 import { quotePowerShell } from "../shared/strings";
 
-export function powerShellAgentScript(baseUrl: string, meta: SessionMeta): string {
+export function powerShellAgentScript(baseUrl: string, code: string): string {
   return `$ErrorActionPreference = "Stop"
 $BaseUrl = ${quotePowerShell(baseUrl)}
-$SessionId = ${quotePowerShell(meta.code)}
+$SessionId = ${quotePowerShell(code)}
 $AgentVersion = ${quotePowerShell(agentProtocolVersion)}
 $PlatformName = if ($PSVersionTable.Platform) { [string]$PSVersionTable.Platform } else { [string][Environment]::OSVersion.Platform }
 $Headers = @{

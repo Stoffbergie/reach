@@ -1,12 +1,11 @@
-import type { SessionMeta } from "../domain/session";
 import { agentProtocolVersion, defaultCommandTimeoutSeconds } from "../shared/config";
 import { quoteShell } from "../shared/strings";
 
-export function shellAgentScript(baseUrl: string, meta: SessionMeta): string {
+export function shellAgentScript(baseUrl: string, code: string): string {
   return `#!/bin/sh
 set -u
 BASE_URL=${quoteShell(baseUrl)}
-SESSION_ID=${quoteShell(meta.code)}
+SESSION_ID=${quoteShell(code)}
 AGENT_VERSION=${quoteShell(agentProtocolVersion)}
 
 copy_text() {

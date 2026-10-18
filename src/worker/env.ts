@@ -1,4 +1,5 @@
+import type { CommandBridge } from "./durable-objects/command-bridge";
+
 export type Env = {
-  SOE_MAILBOX: R2Bucket;
-  COMMAND_BRIDGES: DurableObjectNamespace;
+  COMMAND_BRIDGES: DurableObjectNamespace<CommandBridge>;
 };
