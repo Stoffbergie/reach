@@ -26,6 +26,9 @@ persist = false
 [placement]
 mode = "smart"
 
+[triggers]
+crons = []
+
 [[durable_objects.bindings]]
 name = "COMMAND_BRIDGES"
 class_name = "CommandBridge"
