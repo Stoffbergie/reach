@@ -39,7 +39,7 @@ Linux 6.8.0-45-generic
 - **Text for people, JSON for machines.** Plain output by default. Ask for JSON to get the exit code, stdout and stderr separately.
 - **Safe to run in parallel.** Commands queue in order and every result goes back to the request that sent it.
 - **Gone when you're done.** Ctrl+C or `DELETE` ends the session. Sessions expire after 2 hours and delete themselves.
-- **Nothing kept.** Commands and output pass through memory only. The session stores its shell, platform and timestamps, and nothing else.
+- **No command history on the relay.** Commands and output pass through the service's memory only; it stores session details. Agents use local temporary files.
 
 ## Start the agent
 
