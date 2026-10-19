@@ -121,7 +121,7 @@ while true; do
   command_body=$(cat "$body_file")
   (run_shell "$command_body" "$cwd" "$timeout_seconds" "$stdout_file" "$stderr_file")
   exit_code=$?
-  stdout_bytes=$(wc -c < "$stdout_file" | tr -d ' ')
+  stdout_bytes=$(wc -c < "$stdout_file")
   cat "$stdout_file" "$stderr_file" > "$body_file"
   curl -fsS --connect-timeout 5 --max-time 30 -X POST -H "X-Stdout-Bytes: $stdout_bytes" --data-binary "@$body_file" "$BASE_URL/$CODE/result/$command_id?exit=$exit_code" >/dev/null || true
   rm -f "$headers_file" "$body_file" "$stdout_file" "$stderr_file"
