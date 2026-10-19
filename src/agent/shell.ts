@@ -25,6 +25,7 @@ copy_text() {
 }
 
 decode_b64() {
+  [ -n "$1" ] || return 0
   if command -v base64 >/dev/null 2>&1; then
     printf '%s' "$1" | base64 -d 2>/dev/null || printf '%s' "$1" | base64 -D 2>/dev/null || printf ''
   else
