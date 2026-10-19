@@ -153,12 +153,12 @@ export class CommandBridge extends DurableObject<Env> {
   }
 
   private cancelAll(): void {
+    this.queue = [];
     for (const commandId of this.pending.keys()) this.finish(commandId, { kind: "ended" });
     for (const poller of this.pollers) {
       clearTimeout(poller.timer);
       poller.resolve(null);
     }
     this.pollers = [];
-    this.queue = [];
   }
 }
