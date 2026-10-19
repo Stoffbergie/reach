@@ -31,7 +31,6 @@ export type CommandOutput = {
 export type CommandOutcome = { kind: "done"; output: CommandOutput } | { kind: "timeout" } | { kind: "ended" } | { kind: "oversized" };
 
 type Pending = {
-  command: Command;
   resolve: (outcome: CommandOutcome) => void;
   timer: ReturnType<typeof setTimeout>;
 };
@@ -73,7 +72,7 @@ export class CommandBridge extends DurableObject<Env> {
     logInfo("command_sent", { commandId: command.id, bytes: command.command.length, timeout: command.timeout });
     return new Promise((resolve) => {
       const timer = setTimeout(() => this.finish(command.id, { kind: "timeout" }), maxCommandWaitMs);
-      this.pending.set(command.id, { command, resolve, timer });
+      this.pending.set(command.id, { resolve, timer });
       this.dispatch(command);
     });
   }
