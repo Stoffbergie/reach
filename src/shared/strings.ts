@@ -3,5 +3,5 @@ export function quoteShell(value: string): string {
 }
 
 export function quotePowerShell(value: string): string {
-  return `"${value.replace(/`/g, "``").replace(/\$/g, "`$").replace(/"/g, '`"')}"`;
+  return `"${value.replace(/[`$"]/g, "`$&")}"`;
 }
