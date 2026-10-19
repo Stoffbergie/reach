@@ -26,7 +26,8 @@ export function cleanString(value: unknown, maxLength: number): string {
 }
 
 export function normalizeTimeout(value: unknown): number {
+  if (value === null || value === undefined || value === "") return defaultCommandTimeoutSeconds;
   const parsed = Number(value);
-  if (value === null || value === undefined || value === "" || !Number.isFinite(parsed)) return defaultCommandTimeoutSeconds;
+  if (!Number.isFinite(parsed)) return defaultCommandTimeoutSeconds;
   return Math.min(Math.max(Math.trunc(parsed), 1), maxCommandTimeoutSeconds);
 }
