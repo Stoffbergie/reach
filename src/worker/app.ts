@@ -84,6 +84,7 @@ app.post("/:code", async (c) => {
   const outcome = await guard.bridge.run(input);
   if (outcome.kind === "timeout") return textResponse("Timed out waiting for command result\n", 504);
   if (outcome.kind === "ended") return textResponse("Session ended\n", 410);
+  if (outcome.kind === "oversized") return textResponse(`Command output exceeds ${maxResultBytes} bytes\n`, 413);
 
   const { exitCode, stdout, stderr } = outcome.output;
   if (c.req.header("accept")?.includes("application/json")) return Response.json({ exitCode, stdout, stderr });
@@ -118,7 +119,13 @@ app.post("/:code/result/:commandId", async (c) => {
   const guard = await requireSession(c);
   if ("response" in guard) return guard.response;
 
-  const bytes = await readLimitedBytes(c.req.raw, maxResultBytes);
+  let bytes: Uint8Array;
+  try {
+    bytes = await readLimitedBytes(c.req.raw, maxResultBytes);
+  } catch (error) {
+    if (error instanceof PayloadTooLargeError) await guard.bridge.rejectOversizedResult(c.req.param("commandId"));
+    throw error;
+  }
   const stdoutBytes = Math.min(Number(c.req.header("x-stdout-bytes")) || 0, bytes.byteLength);
   const exitCode = Number.parseInt(c.req.query("exit") ?? "", 10);
   await guard.bridge.result(c.req.param("commandId"), {

@@ -28,7 +28,7 @@ export type CommandOutput = {
   stderr: string;
 };
 
-export type CommandOutcome = { kind: "done"; output: CommandOutput } | { kind: "timeout" } | { kind: "ended" };
+export type CommandOutcome = { kind: "done"; output: CommandOutput } | { kind: "timeout" } | { kind: "ended" } | { kind: "oversized" };
 
 type Pending = {
   command: Command;
@@ -101,6 +101,10 @@ export class CommandBridge extends DurableObject<Env> {
   result(commandId: string, output: CommandOutput): void {
     logInfo("command_result", { commandId, exitCode: output.exitCode, bytes: output.stdout.length + output.stderr.length });
     this.finish(commandId, { kind: "done", output });
+  }
+
+  rejectOversizedResult(commandId: string): void {
+    this.finish(commandId, { kind: "oversized" });
   }
 
   async end(): Promise<void> {
