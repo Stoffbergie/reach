@@ -180,7 +180,15 @@ try {
     $Result = Run-Command -CommandBody $CommandBody -Cwd $Cwd -TimeoutSeconds $TimeoutSeconds
     $Stdout = [Text.Encoding]::UTF8.GetBytes([string]$Result.Stdout)
     $Stderr = [Text.Encoding]::UTF8.GetBytes([string]$Result.Stderr)
-    Invoke-AgentRequest -Method Post -Path "/$Code/result/\${CommandId}?exit=$([int]$Result.ExitCode)" -Body ([byte[]]($Stdout + $Stderr)) -ContentType "application/octet-stream" -Headers @{ "X-Stdout-Bytes" = [string]$Stdout.Length } | Out-Null
+    $ResultBody = $Stdout
+    if ($Stdout.Length -eq 0) {
+      $ResultBody = $Stderr
+    } elseif ($Stderr.Length -gt 0) {
+      $ResultBody = [byte[]]::new($Stdout.Length + $Stderr.Length)
+      $Stdout.CopyTo($ResultBody, 0)
+      $Stderr.CopyTo($ResultBody, $Stdout.Length)
+    }
+    Invoke-AgentRequest -Method Post -Path "/$Code/result/\${CommandId}?exit=$([int]$Result.ExitCode)" -Body $ResultBody -ContentType "application/octet-stream" -Headers @{ "X-Stdout-Bytes" = [string]$Stdout.Length } | Out-Null
   }
 } finally {
   Stop-Session
