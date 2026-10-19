@@ -43,6 +43,11 @@ end_session() {
   curl -fsS --connect-timeout 5 --max-time 10 -X DELETE "$BASE_URL/$CODE" >/dev/null 2>&1 || true
 }
 
+cleanup() {
+  rm -f "\${headers_file:-}" "\${body_file:-}" "\${stdout_file:-}" "\${stderr_file:-}"
+  end_session
+}
+
 run_shell() {
   command_body=$1
   cwd=$2
@@ -85,7 +90,8 @@ else
 fi
 
 printf 'Session: %s (%s)\\nStop anytime: Ctrl+C\\n' "$CODE" "$CLIPBOARD"
-trap 'end_session; exit 0' INT TERM EXIT
+trap 'exit 0' INT TERM
+trap cleanup EXIT
 
 while true; do
   headers_file=$(mktemp)
