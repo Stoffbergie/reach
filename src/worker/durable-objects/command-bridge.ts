@@ -147,7 +147,7 @@ export class CommandBridge extends DurableObject<Env> {
     if (!pending) return;
     clearTimeout(pending.timer);
     this.pending.delete(commandId);
-    this.queue = this.queue.filter((command) => command.id !== commandId);
+    if (this.queue.length > 0) this.queue = this.queue.filter((command) => command.id !== commandId);
     if (outcome.kind === "timeout") logInfo("command_timeout", { commandId });
     pending.resolve(outcome);
   }
