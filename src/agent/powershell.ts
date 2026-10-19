@@ -23,12 +23,7 @@ function Decode-Base64Text([string]$Value) {
 
 function Get-ResponseHeader([object]$Response, [string]$Name) {
   if (!$Response -or !$Response.Headers) { return "" }
-  if ($Response.Headers.AllKeys) {
-    foreach ($Key in $Response.Headers.AllKeys) {
-      if ($Key -ieq $Name) { return [string]$Response.Headers[$Key] }
-    }
-  }
-  return ""
+  return [string]$Response.Headers[$Name]
 }
 
 function Get-ErrorResponse([object]$ErrorRecord) {
