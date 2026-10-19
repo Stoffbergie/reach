@@ -1,4 +1,6 @@
-import { Hono, type Context } from "hono";
+import type { Context } from "hono";
+import { HonoBase } from "hono/hono-base";
+import { TrieRouter } from "hono/router/trie-router";
 import { powerShellAgentScript } from "../agent/powershell";
 import { shellAgentScript } from "../agent/shell";
 import { maxCommandBytes, maxResultBytes } from "../shared/config";
@@ -15,7 +17,7 @@ type SessionGuard = { session: Session; bridge: DurableObjectStub<CommandBridge>
 const sessionCodePattern = /^[23456789abcdefghjkmnpqrstuvwxyz]{8}$/;
 const textDecoder = new TextDecoder();
 
-export const app = new Hono<{ Bindings: Env }>();
+export const app = new HonoBase<{ Bindings: Env }>({ router: new TrieRouter() });
 
 app.onError((error) => {
   if (error instanceof PayloadTooLargeError) return textResponse(`${error.message}\n`, 413);
