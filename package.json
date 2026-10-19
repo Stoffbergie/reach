@@ -2,7 +2,7 @@
   "name": "reach",
   "version": "0.1.0",
   "private": false,
-  "description": "Reach any shell from anywhere.",
+  "description": "Run commands on remote machines over HTTPS.",
   "homepage": "https://reach.stoff.dev",
   "bugs": {
     "url": "https://github.com/Stoffbergie/reach/issues"
