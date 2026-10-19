@@ -23,12 +23,7 @@ function Decode-Base64Text([string]$Value) {
 
 function Get-ResponseHeader([object]$Response, [string]$Name) {
   if (!$Response -or !$Response.Headers) { return "" }
-  if ($Response.Headers.AllKeys) {
-    foreach ($Key in $Response.Headers.AllKeys) {
-      if ($Key -ieq $Name) { return [string]$Response.Headers[$Key] }
-    }
-  }
-  return ""
+  return [string]$Response.Headers[$Name]
 }
 
 function Get-ErrorResponse([object]$ErrorRecord) {
@@ -40,7 +35,7 @@ function Get-ErrorResponse([object]$ErrorRecord) {
 }
 
 function Invoke-AgentRequest {
-  param([string]$Method, [string]$Path, [string]$OutFile, [byte[]]$Body, [string]$ContentType, [hashtable]$Headers = @{})
+  param([string]$Method, [string]$Path, [byte[]]$Body, [string]$ContentType, [hashtable]$Headers = @{})
   $Request = [System.Net.WebRequest]::Create("$BaseUrl$Path")
   $Request.Method = $Method.ToUpperInvariant()
   $Request.Timeout = 35000
@@ -74,17 +69,17 @@ function Invoke-AgentRequest {
   }
   try {
     $StatusCode = [int]$Response.StatusCode
-    if ($OutFile) {
-      $Stream = $Response.GetResponseStream()
-      $File = [IO.File]::Open($OutFile, [IO.FileMode]::Create, [IO.FileAccess]::Write)
+    $ResponseBody = ""
+    $Stream = $Response.GetResponseStream()
+    if ($Stream) {
+      $Reader = [IO.StreamReader]::new($Stream, [Text.Encoding]::UTF8)
       try {
-        if ($Stream) { $Stream.CopyTo($File) }
+        $ResponseBody = $Reader.ReadToEnd()
       } finally {
-        $File.Close()
-        if ($Stream) { $Stream.Close() }
+        $Reader.Dispose()
       }
     }
-    return [pscustomobject]@{ StatusCode = $StatusCode; Headers = $Response.Headers }
+    return [pscustomobject]@{ StatusCode = $StatusCode; Headers = $Response.Headers; Body = $ResponseBody }
   } finally {
     $Response.Close()
   }
@@ -154,20 +149,16 @@ Write-Host "Stop anytime: Ctrl+C"
 try { [Console]::TreatControlCAsInput = $false } catch {}
 try {
   while ($true) {
-    $BodyFile = [IO.Path]::GetTempFileName()
-    $Response = Invoke-AgentRequest -Method Get -Path "/$Code/next" -OutFile $BodyFile
+    $Response = Invoke-AgentRequest -Method Get -Path "/$Code/next"
     $StatusCode = $Response.StatusCode
     if ($StatusCode -eq 204) {
-      Remove-Item $BodyFile -Force
       continue
     }
     if ($StatusCode -eq 410 -or $StatusCode -eq 404) {
-      Remove-Item $BodyFile -Force
       break
     }
     if ($StatusCode -ne 200) {
-      if (Test-Path $BodyFile) { Get-Content $BodyFile -Raw | Write-Host }
-      Remove-Item $BodyFile -Force
+      if ($Response.Body) { Write-Host $Response.Body }
       Start-Sleep -Seconds 1
       continue
     }
@@ -175,8 +166,7 @@ try {
     $Cwd = Decode-Base64Text (Get-ResponseHeader $Response "X-Command-Cwd-Base64")
     $TimeoutSeconds = [int](Get-ResponseHeader $Response "X-Command-Timeout")
     if ($TimeoutSeconds -lt 1) { $TimeoutSeconds = ${defaultCommandTimeoutSeconds} }
-    $CommandBody = Get-Content $BodyFile -Raw
-    Remove-Item $BodyFile -Force
+    $CommandBody = $Response.Body
     $Result = Run-Command -CommandBody $CommandBody -Cwd $Cwd -TimeoutSeconds $TimeoutSeconds
     $Stdout = [Text.Encoding]::UTF8.GetBytes([string]$Result.Stdout)
     $Stderr = [Text.Encoding]::UTF8.GetBytes([string]$Result.Stderr)
