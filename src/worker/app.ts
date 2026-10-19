@@ -106,12 +106,12 @@ app.get("/:code/next", async (c) => {
   const command = await guard.bridge.next();
   if (!command) return new Response(null, { status: 204 });
 
-  const headers = new Headers({
+  const headers: Record<string, string> = {
     "Content-Type": "application/octet-stream",
     "X-Command-Id": command.id,
     "X-Command-Timeout": String(command.timeout)
-  });
-  if (command.cwd) headers.set("X-Command-Cwd-Base64", base64Encode(command.cwd));
+  };
+  if (command.cwd) headers["X-Command-Cwd-Base64"] = base64Encode(command.cwd);
   return new Response(command.command, { headers });
 });
 
