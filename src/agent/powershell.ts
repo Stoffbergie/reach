@@ -116,8 +116,8 @@ $global:LASTEXITCODE = $null
 if ($null -ne $global:LASTEXITCODE) { exit $global:LASTEXITCODE }
 '@
       $Output = @($CommandBody | & $PowerShellPath -NoProfile -NonInteractive -OutputFormat XML -Command $Runner *>&1)
-      $Stdout = $Output | Where-Object { $_ -isnot [System.Management.Automation.ErrorRecord] } | Out-String
-      $Stderr = $Output | Where-Object { $_ -is [System.Management.Automation.ErrorRecord] } | Out-String
+      $Stdout = $Output.Where({ $_ -isnot [System.Management.Automation.ErrorRecord] }) | Out-String
+      $Stderr = $Output.Where({ $_ -is [System.Management.Automation.ErrorRecord] }) | Out-String
       $ExitCode = if ($null -ne $global:LASTEXITCODE) { [int]$global:LASTEXITCODE } else { 0 }
       [pscustomobject]@{ ExitCode = $ExitCode; Stdout = $Stdout; Stderr = $Stderr }
     } catch {
