@@ -130,8 +130,8 @@ app.post("/:code/result/:commandId", async (c) => {
   const exitCode = Number.parseInt(c.req.query("exit") ?? "", 10);
   await guard.bridge.result(c.req.param("commandId"), {
     exitCode: Number.isNaN(exitCode) ? 1 : exitCode,
-    stdout: textDecoder.decode(bytes.subarray(0, stdoutBytes)),
-    stderr: textDecoder.decode(bytes.subarray(stdoutBytes))
+    stdout: stdoutBytes === 0 ? "" : textDecoder.decode(bytes.subarray(0, stdoutBytes)),
+    stderr: stdoutBytes === bytes.byteLength ? "" : textDecoder.decode(bytes.subarray(stdoutBytes))
   });
   return textResponse("ok\n");
 });
