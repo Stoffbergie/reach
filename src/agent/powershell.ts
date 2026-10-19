@@ -102,7 +102,7 @@ function Start-CommandJob([string]$CommandBody, [string]$Cwd) {
         Set-Location -LiteralPath $Cwd
       }
       $global:LASTEXITCODE = $null
-      $PowerShellPath = (Get-Process -Id $PID).Path
+      $PowerShellPath = [Diagnostics.Process]::GetCurrentProcess().Path
       $OutputEncoding = [Text.UTF8Encoding]::new($false)
       $Runner = @'
 [Console]::InputEncoding = [Text.UTF8Encoding]::new($false)
