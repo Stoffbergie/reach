@@ -62,6 +62,12 @@ export class CommandBridge extends DurableObject<Env> {
     return this.ctx.storage.get<Session>("session");
   }
 
+  async sessionStatus(): Promise<(Session & { connected: boolean }) | undefined> {
+    const session = await this.session();
+    if (!session) return undefined;
+    return { ...session, connected: this.connected() };
+  }
+
   connected(): boolean {
     return this.pollers.length > 0 || Date.now() - this.lastPollAt < agentGoneAfterMs;
   }

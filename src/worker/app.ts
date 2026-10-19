@@ -12,7 +12,7 @@ import type { CommandBridge, Session } from "./durable-objects/command-bridge";
 import type { Env } from "./env";
 
 type AppContext = Context<{ Bindings: Env }>;
-type SessionGuard = { session: Session; bridge: DurableObjectStub<CommandBridge> } | { response: Response };
+type SessionGuard = { session: Session & { connected?: boolean }; bridge: DurableObjectStub<CommandBridge> } | { response: Response };
 
 const sessionCodePattern = /^[23456789abcdefghjkmnpqrstuvwxyz]{8}$/;
 const textDecoder = new TextDecoder();
@@ -63,7 +63,7 @@ app.post("/", async (c) => {
 });
 
 app.get("/:code", async (c) => {
-  const guard = await requireSession(c);
+  const guard = await requireSession(c, { includeConnectionStatus: true });
   if ("response" in guard) return guard.response;
 
   const { session } = guard;
@@ -71,7 +71,7 @@ app.get("/:code", async (c) => {
     code: session.code,
     shell: session.shell,
     platform: session.platform,
-    connected: await guard.bridge.connected(),
+    connected: session.connected,
     expiresAt: new Date(session.expiresAt).toISOString()
   });
 });
@@ -140,7 +140,7 @@ app.post("/:code/result/:commandId", async (c) => {
 
 app.notFound((c) => (wantsHtml(c.req.raw.headers) ? c.html(notFoundPage(), 404) : textResponse("Not found\n", 404)));
 
-async function requireSession(c: AppContext, options: { allowEnded?: boolean } = {}): Promise<SessionGuard> {
+async function requireSession(c: AppContext, options: { allowEnded?: boolean; includeConnectionStatus?: boolean } = {}): Promise<SessionGuard> {
   const address = c.req.header("cf-connecting-ip");
   if (address && !(await c.env.LOOKUPS.limit({ key: address })).success) {
     return { response: textResponse("Too many requests. Try again in a minute.\n", 429, { "Retry-After": "60" }) };
@@ -150,7 +150,7 @@ async function requireSession(c: AppContext, options: { allowEnded?: boolean } =
   if (!sessionCodePattern.test(code)) return { response: textResponse("Session not found\n", 404) };
 
   const bridge = c.env.COMMAND_BRIDGES.getByName(code);
-  const session = await bridge.session();
+  const session = options.includeConnectionStatus ? await bridge.sessionStatus() : await bridge.session();
   if (!session) return { response: textResponse("Session not found\n", 404) };
   if (session.endedAt && !options.allowEnded) return { response: textResponse("Session ended\n", 410) };
   return { session, bridge };
