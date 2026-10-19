@@ -4,9 +4,7 @@
 
 # reach
 
-**Reach any shell from anywhere.**
-
-Temporary shell access over HTTPS. No SSH, no VPN, no open ports.
+**Run commands on remote machines over HTTPS.**
 
 [![Deploy](https://github.com/Stoffbergie/reach/actions/workflows/deploy.yml/badge.svg)](https://github.com/Stoffbergie/reach/actions/workflows/deploy.yml)
 [![Cloudflare Workers](https://img.shields.io/badge/runs%20on-Cloudflare%20Workers-111?logo=cloudflare&logoColor=white)](https://workers.cloudflare.com)

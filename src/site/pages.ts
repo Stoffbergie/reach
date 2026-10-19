@@ -1,5 +1,5 @@
 const SOURCE_URL = "https://github.com/Stoffbergie/reach";
-const TAGLINE = "Reach any shell from anywhere.";
+const TAGLINE = "Run commands on remote machines over HTTPS.";
 
 const STYLE = `
 :root{--bg:#fafafa;--fg:#171717;--muted:#737373;color-scheme:light dark}
@@ -72,7 +72,7 @@ const LIMITS =
   "Sessions last 2 hours. Commands up to 64 KB, output up to 1 MB. Errors are plain text: 404 unknown session, 410 ended, 413 too large, 429 more than 300 lookups a minute, 504 no result in time. The code is the only key, so end the session when you're done.";
 
 export function scriptUsage(origin: string, comment: string): string {
-  const lines = ["reach: temporary shell access over HTTPS.", ""];
+  const lines = [`reach: ${TAGLINE}`, ""];
   for (const section of usage(origin)) {
     lines.push(section.title.toUpperCase());
     for (const [command, , description] of section.rows) lines.push(`  ${command}`, `      ${description}`);
@@ -95,7 +95,7 @@ ${sections.slice(0, 2).join("")}
 <footer><p><a href="${SOURCE_URL}">Source</a></p></footer>
 <script type="application/ld+json">${JSON.stringify({ "@context": "https://schema.org", "@type": "WebSite", name: "reach", url: `${origin}/`, description: TAGLINE })}</script>`,
     {
-      description: `${TAGLINE} Temporary shell access over HTTPS. No SSH, no VPN, no open ports.`,
+      description: TAGLINE,
       url: `${origin}/`,
       image: `${origin}/social/reach.png`,
       index: true

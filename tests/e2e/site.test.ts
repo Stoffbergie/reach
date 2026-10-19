@@ -9,7 +9,7 @@ test("browsers and link previews get the homepage instead of the agent", async (
     assert.equal(response.status, 200);
     assert.match(response.headers.get("Content-Type") ?? "", /text\/html/);
     const page = await response.text();
-    assert.match(page, /Reach any shell from anywhere\./);
+    assert.match(page, /Run commands on remote machines over HTTPS\./);
     assert.match(page, new RegExp(`curl -sS ${baseUrl} \\| sh`));
   }
 });
