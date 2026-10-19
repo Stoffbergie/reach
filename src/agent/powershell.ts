@@ -156,7 +156,7 @@ try {
   while ($true) {
     $BodyFile = [IO.Path]::GetTempFileName()
     $Response = Invoke-AgentRequest -Method Get -Path "/$Code/next" -OutFile $BodyFile
-    $StatusCode = [int]$Response.StatusCode
+    $StatusCode = $Response.StatusCode
     if ($StatusCode -eq 204) {
       Remove-Item $BodyFile -Force
       continue
