@@ -150,7 +150,7 @@ try { [Console]::TreatControlCAsInput = $false } catch {}
 try {
   while ($true) {
     $Response = Invoke-AgentRequest -Method Get -Path "/$Code/next"
-    $StatusCode = [int]$Response.StatusCode
+    $StatusCode = $Response.StatusCode
     if ($StatusCode -eq 204) {
       continue
     }
